@@ -80,3 +80,12 @@ export {
   createWeightEntry,
   deleteWeightEntry,
 } from './health';
+
+// ── Re-exports from storage ───────────────────────────────────
+
+export type { UploadInput } from './storage';
+export {
+  uploadDocument,
+  subscribeToDocuments,
+  archiveDocument,
+} from './storage';

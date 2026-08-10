@@ -130,15 +130,55 @@ export type HealthObservation = {
   updatedAt: string;
 };
 
+// ── Documents ─────────────────────────────────────────────────
+
+export const DOC_TYPES = [
+  'vaccination_card',
+  'prescription',
+  'lab_report',
+  'visit_summary',
+  'other',
+] as const;
+
+export type DocType = (typeof DOC_TYPES)[number];
+
+export const DOC_TYPE_LABELS: Record<DocType, string> = {
+  vaccination_card: 'Vaccination card',
+  prescription: 'Prescription',
+  lab_report: 'Lab report',
+  visit_summary: 'Visit summary',
+  other: 'Other document',
+};
+
+export type PetDocument = {
+  id: string;
+  petId: string;
+  ownerUid: string;
+  docType: DocType;
+  mimeType: string;
+  originalFileName: string;
+  /** Firebase Storage path (private — never expose directly). */
+  storagePath: string;
+  /** Signed download URL (short-lived — fetch on demand). */
+  downloadUrl: string;
+  fileSizeBytes: number;
+  notes?: string;
+  uploadedByUid: string;
+  isArchived: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
 // ── Unified timeline item ─────────────────────────────────────
 
-export type TimelineFilter = 'all' | 'vaccinations' | 'medications' | 'weight' | 'observations';
+export type TimelineFilter = 'all' | 'vaccinations' | 'medications' | 'weight' | 'observations' | 'documents';
 
 export type TimelineItem =
   | { kind: 'vaccination'; date: string; record: VaccinationRecord }
   | { kind: 'medication'; date: string; plan: MedicationPlan }
   | { kind: 'weight'; date: string; entry: WeightEntry }
-  | { kind: 'observation'; date: string; observation: HealthObservation };
+  | { kind: 'observation'; date: string; observation: HealthObservation }
+  | { kind: 'document'; date: string; document: PetDocument };
 
 /** Merge and sort all health record types into a single timeline array. */
 export function buildTimeline(
@@ -146,13 +186,14 @@ export function buildTimeline(
   medications: MedicationPlan[],
   weights: WeightEntry[],
   observations: HealthObservation[],
+  documents: PetDocument[] = [],
 ): TimelineItem[] {
   const items: TimelineItem[] = [
     ...vaccinations.map((r) => ({ kind: 'vaccination' as const, date: r.administeredOn, record: r })),
     ...medications.map((m) => ({ kind: 'medication' as const, date: m.startAt.slice(0, 10), plan: m })),
     ...weights.map((w) => ({ kind: 'weight' as const, date: w.measuredOn, entry: w })),
     ...observations.map((o) => ({ kind: 'observation' as const, date: o.observedOn, observation: o })),
+    ...documents.map((d) => ({ kind: 'document' as const, date: d.createdAt.slice(0, 10), document: d })),
   ];
-  // Sort descending — most recent first
   return items.sort((a, b) => b.date.localeCompare(a.date));
 }

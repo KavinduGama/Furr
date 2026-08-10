@@ -13,10 +13,12 @@ export type {
   HealthObservation,
   ObservationCategory,
   ObservationSeverity,
+  PetDocument,
+  DocType,
   TimelineItem,
   TimelineFilter,
 } from './health';
-export { VACCINE_TYPES, buildTimeline } from './health';
+export { VACCINE_TYPES, buildTimeline, DOC_TYPES, DOC_TYPE_LABELS } from './health';
 
 // ── Roles ────────────────────────────────────────────────────
 

@@ -9,7 +9,7 @@ import {
   View,
   ActivityIndicator,
 } from 'react-native';
-import { buildTimeline, type TimelineFilter, type TimelineItem } from '@furr/core';
+import { buildTimeline, type TimelineFilter, type TimelineItem, DOC_TYPE_LABELS } from '@furr/core';
 import { colors, radius, space } from '@furr/ui';
 import { Screen } from '@/src/components/screen';
 import { usePets } from '@/src/context/pets';
@@ -24,6 +24,7 @@ const FILTER_OPTIONS: { key: TimelineFilter; label: string; icon: string }[] = [
   { key: 'vaccinations', label: 'Vaccines', icon: 'shield-checkmark' },
   { key: 'medications', label: 'Meds', icon: 'medical' },
   { key: 'weight', label: 'Weight', icon: 'scale' },
+  { key: 'documents', label: 'Docs', icon: 'document-text' },
   { key: 'observations', label: 'Notes', icon: 'eye' },
 ];
 
@@ -122,20 +123,42 @@ function TimelineRow({ item }: { item: TimelineItem }) {
         </View>
       );
     }
+    case 'document': {
+      const d = item.document;
+      const label = DOC_TYPE_LABELS[d.docType];
+      return (
+        <View style={styles.row}>
+          <View style={[styles.iconWrap, { backgroundColor: '#F3EEFF' }]}>
+            <Ionicons name={d.mimeType === 'application/pdf' ? 'document-text' : 'image'} size={17} color="#7C5CBF" />
+          </View>
+          <View style={styles.rowBody}>
+            <View style={styles.rowTitleRow}>
+              <Text style={styles.rowTitle} numberOfLines={1}>{d.originalFileName}</Text>
+              <View style={[styles.badge, { backgroundColor: '#F3EEFF' }]}>
+                <Text style={[styles.badgeText, { color: '#7C5CBF' }]}>{label}</Text>
+              </View>
+            </View>
+            <Text style={styles.rowMeta}>{d.createdAt.slice(0, 10)}</Text>
+            {d.notes && <Text style={styles.rowMeta}>{d.notes}</Text>}
+          </View>
+        </View>
+      );
+    }
   }
 }
 
 export default function TimelineScreen() {
   const { selectedPet } = usePets();
-  const { vaccinations, medications, weights, isLoading } = useHealth();
+  const { vaccinations, medications, weights, documents, isLoading } = useHealth();
   const [filter, setFilter] = useState<TimelineFilter>('all');
 
-  const allItems = buildTimeline(vaccinations, medications, weights, []);
+  const allItems = buildTimeline(vaccinations, medications, weights, [], documents);
 
   const filtered: TimelineItem[] = filter === 'all' ? allItems : allItems.filter((item) => {
     if (filter === 'vaccinations') return item.kind === 'vaccination';
     if (filter === 'medications') return item.kind === 'medication';
     if (filter === 'weight') return item.kind === 'weight';
+    if (filter === 'documents') return item.kind === 'document';
     if (filter === 'observations') return item.kind === 'observation';
     return true;
   });
@@ -244,6 +267,7 @@ export default function TimelineScreen() {
         const key = item.kind === 'vaccination' ? item.record.id
           : item.kind === 'medication' ? item.plan.id
           : item.kind === 'weight' ? item.entry.id
+          : item.kind === 'document' ? item.document.id
           : item.observation.id;
 
         // Date divider

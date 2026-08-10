@@ -47,7 +47,7 @@ function weightTrend(entries: WeightEntry[]): string | null {
 
 export default function CareScreen() {
   const { selectedPet } = usePets();
-  const { vaccinations, medications, weights, isLoading } = useHealth();
+  const { vaccinations, medications, weights, documents, isLoading } = useHealth();
 
   if (isLoading) {
     return (
@@ -269,6 +269,49 @@ export default function CareScreen() {
         <Ionicons name="arrow-forward" size={14} color={colors.brand} />
       </Pressable>
 
+      {/* ── Documents ────────────────────────────────── */}
+      <View style={[styles.sectionHeader, { marginTop: space.sm }]}>
+        <View style={styles.sectionTitleRow}>
+          <Ionicons name="document-text" size={15} color="#7C5CBF" />
+          <Text style={styles.sectionTitle}>DOCUMENTS</Text>
+        </View>
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => router.push('/health/documents' as never)}
+        >
+          <Text style={styles.addLink}>View all</Text>
+        </Pressable>
+      </View>
+
+      <Pressable
+        accessibilityRole="button"
+        style={styles.docsBanner}
+        onPress={() => router.push('/health/documents' as never)}
+      >
+        <View style={[styles.recordIcon, { backgroundColor: '#F3EEFF' }]}>
+          <Ionicons name="document-text" size={17} color="#7C5CBF" />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.recordTitle}>
+            {documents.length === 0
+              ? 'No documents uploaded'
+              : `${documents.length} document${documents.length !== 1 ? 's' : ''}`}
+          </Text>
+          <Text style={styles.recordMeta}>
+            {documents.length === 0
+              ? `Upload vaccination cards, prescriptions and lab reports for ${petName}.`
+              : 'Tap to view, or upload another document.'}
+          </Text>
+        </View>
+        <Pressable
+          accessibilityRole="button"
+          style={styles.addBtn}
+          onPress={() => router.push('/health/upload-document' as never)}
+        >
+          <Ionicons name="add" size={20} color="#fff" />
+        </Pressable>
+      </Pressable>
+
       {/* Sharing placeholder */}
       <View style={styles.shareBox}>
         <Ionicons name="share-outline" size={18} color={colors.brand} />
@@ -316,4 +359,5 @@ const styles = StyleSheet.create({
   comingSoonText: { color: '#fff', fontSize: 9, fontWeight: '900', letterSpacing: 0.5 },
   timelineLink: { flexDirection: 'row', alignItems: 'center', gap: 7, justifyContent: 'center', paddingVertical: 10, backgroundColor: colors.mist, borderRadius: radius.md },
   timelineLinkText: { color: colors.brand, fontSize: 13, fontWeight: '900' },
+  docsBanner: { backgroundColor: colors.surface, borderRadius: radius.md, padding: 13, flexDirection: 'row', alignItems: 'center', gap: 11, borderWidth: 1, borderColor: colors.line },
 });
