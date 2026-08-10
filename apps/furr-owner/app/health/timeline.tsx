@@ -149,10 +149,10 @@ function TimelineRow({ item }: { item: TimelineItem }) {
 
 export default function TimelineScreen() {
   const { selectedPet } = usePets();
-  const { vaccinations, medications, weights, documents, isLoading } = useHealth();
+  const { vaccinations, medications, weights, documents, observations, isLoading } = useHealth();
   const [filter, setFilter] = useState<TimelineFilter>('all');
 
-  const allItems = buildTimeline(vaccinations, medications, weights, [], documents);
+  const allItems = buildTimeline(vaccinations, medications, weights, observations, documents);
 
   const filtered: TimelineItem[] = filter === 'all' ? allItems : allItems.filter((item) => {
     if (filter === 'vaccinations') return item.kind === 'vaccination';

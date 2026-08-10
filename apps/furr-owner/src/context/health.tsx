@@ -7,12 +7,14 @@ import React, {
   useState,
   type PropsWithChildren,
 } from 'react';
-import type { VaccinationRecord, MedicationPlan, WeightEntry, PetDocument } from '@furr/core';
+import type { VaccinationRecord, MedicationPlan, WeightEntry, PetDocument, HealthObservation, HealthFlag } from '@furr/core';
 import {
   subscribeToVaccinations,
   subscribeToMedications,
   subscribeToWeightEntries,
   subscribeToDocuments,
+  subscribeToObservations,
+  subscribeToFlags,
 } from '@furr/firebase';
 import { useAuth } from './auth';
 import { usePets } from './pets';
@@ -26,6 +28,8 @@ interface HealthContextValue {
   medications: MedicationPlan[];
   weights: WeightEntry[];
   documents: PetDocument[];
+  observations: HealthObservation[];
+  flags: HealthFlag[];
   isLoading: boolean;
   addVaccination: (v: VaccinationRecord) => void;
   patchVaccination: (id: string, updates: Partial<VaccinationRecord>) => void;
@@ -36,6 +40,8 @@ interface HealthContextValue {
   removeWeight: (id: string) => void;
   addDocument: (d: PetDocument) => void;
   removeDocument: (id: string) => void;
+  addObservation: (o: HealthObservation) => void;
+  addFlag: (f: HealthFlag) => void;
 }
 
 const HealthContext = createContext<HealthContextValue | null>(null);
@@ -52,6 +58,8 @@ export function HealthProvider({ children }: PropsWithChildren) {
   const [medications, setMedications] = useState<MedicationPlan[]>([]);
   const [weights, setWeights] = useState<WeightEntry[]>([]);
   const [documents, setDocuments] = useState<PetDocument[]>([]);
+  const [observations, setObservations] = useState<HealthObservation[]>([]);
+  const [flags, setFlags] = useState<HealthFlag[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
   // ── Subscribe whenever selected pet changes ──────────────────
@@ -61,19 +69,23 @@ export function HealthProvider({ children }: PropsWithChildren) {
       setMedications([]);
       setWeights([]);
       setDocuments([]);
+      setObservations([]);
+      setFlags([]);
       return;
     }
 
     setIsLoading(true);
     let done = 0;
-    const checkDone = () => { if (++done === 4) setIsLoading(false); };
+    const checkDone = () => { if (++done === 6) setIsLoading(false); };
 
     const unsubVac = subscribeToVaccinations(firebaseUser.uid, selectedPet.id, (recs) => { setVaccinations(recs); checkDone(); });
     const unsubMed = subscribeToMedications(firebaseUser.uid, selectedPet.id, (plans) => { setMedications(plans); checkDone(); });
     const unsubWgt = subscribeToWeightEntries(firebaseUser.uid, selectedPet.id, (entries) => { setWeights(entries); checkDone(); });
     const unsubDoc = subscribeToDocuments(firebaseUser.uid, selectedPet.id, (docs) => { setDocuments(docs); checkDone(); });
+    const unsubObs = subscribeToObservations(firebaseUser.uid, selectedPet.id, (obs) => { setObservations(obs); checkDone(); });
+    const unsubFlag = subscribeToFlags(firebaseUser.uid, selectedPet.id, (fs) => { setFlags(fs); checkDone(); });
 
-    return () => { unsubVac(); unsubMed(); unsubWgt(); unsubDoc(); };
+    return () => { unsubVac(); unsubMed(); unsubWgt(); unsubDoc(); unsubObs(); unsubFlag(); };
   }, [firebaseUser, selectedPet]);
 
   // ── Optimistic actions ────────────────────────────────────────
@@ -88,19 +100,22 @@ export function HealthProvider({ children }: PropsWithChildren) {
   const removeWeight = useCallback((id: string) => setWeights((p) => p.filter((w) => w.id !== id)), []);
   const addDocument = useCallback((d: PetDocument) => setDocuments((p) => [d, ...p]), []);
   const removeDocument = useCallback((id: string) => setDocuments((p) => p.filter((d) => d.id !== id)), []);
+  const addObservation = useCallback((o: HealthObservation) => setObservations((p) => [o, ...p]), []);
+  const addFlag = useCallback((f: HealthFlag) => setFlags((p) => [f, ...p]), []);
 
   const value = useMemo<HealthContextValue>(
     () => ({
-      vaccinations, medications, weights, documents, isLoading,
+      vaccinations, medications, weights, documents, observations, flags, isLoading,
       addVaccination, patchVaccination, removeVaccination,
       addMedication, removeMedication,
       addWeight, removeWeight,
       addDocument, removeDocument,
+      addObservation, addFlag,
     }),
-    [vaccinations, medications, weights, documents, isLoading,
+    [vaccinations, medications, weights, documents, observations, flags, isLoading,
      addVaccination, patchVaccination, removeVaccination,
      addMedication, removeMedication, addWeight, removeWeight,
-     addDocument, removeDocument],
+     addDocument, removeDocument, addObservation, addFlag],
   );
 
   return <HealthContext.Provider value={value}>{children}</HealthContext.Provider>;

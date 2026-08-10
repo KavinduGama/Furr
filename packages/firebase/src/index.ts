@@ -79,6 +79,10 @@ export {
   subscribeToWeightEntries,
   createWeightEntry,
   deleteWeightEntry,
+  subscribeToObservations,
+  createObservation,
+  subscribeToFlags,
+  createFlag,
 } from './health';
 
 // ── Re-exports from storage ───────────────────────────────────

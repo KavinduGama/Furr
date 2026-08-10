@@ -2,7 +2,13 @@
 //  @furr/firebase — Vaccination + Medication repositories
 // ─────────────────────────────────────────────────────────────
 
-import type { VaccinationRecord, MedicationPlan, WeightEntry } from '@furr/core';
+import type { 
+  VaccinationRecord, 
+  MedicationPlan, 
+  WeightEntry,
+  HealthObservation,
+  HealthFlag,
+} from '@furr/core';
 
 const IS_DEV_BYPASS = typeof process !== 'undefined' && !process.env?.EXPO_PUBLIC_FIREBASE_API_KEY;
 
@@ -198,4 +204,105 @@ export async function deleteWeightEntry(ownerUid: string, petId: string, entryId
   }
   const { getFirestore, doc, deleteDoc } = await import('firebase/firestore');
   await deleteDoc(doc(getFirestore(), wgtPath(ownerUid, petId), entryId));
+}
+
+// ─────────────────────────────────────────────────────────────
+//  Observations (HLT-001)
+// ─────────────────────────────────────────────────────────────
+
+let devObservations: HealthObservation[] = [];
+const obsColPath = (uid: string, petId: string) => `ownerPets/${uid}/pets/${petId}/observations`;
+
+export function subscribeToObservations(
+  ownerUid: string,
+  petId: string,
+  onUpdate: (obs: HealthObservation[]) => void,
+): () => void {
+  if (IS_DEV_BYPASS) {
+    onUpdate(devObservations.filter((o) => o.petId === petId));
+    return () => {};
+  }
+  void (async () => {
+    const { getFirestore, collection, query, orderBy, onSnapshot } = await import('firebase/firestore');
+    const q = query(collection(getFirestore(), obsColPath(ownerUid, petId)), orderBy('observedOn', 'desc'));
+    return onSnapshot(q, (snap) => { onUpdate(snap.docs.map((d) => d.data() as HealthObservation)); });
+  })();
+  return () => {};
+}
+
+export async function createObservation(
+  ownerUid: string,
+  petId: string,
+  input: Omit<HealthObservation, 'id' | 'petId' | 'ownerUid' | 'createdAt' | 'updatedAt' | 'createdByUid' | 'isArchived'>,
+): Promise<HealthObservation> {
+  const now = new Date().toISOString();
+  const obs: HealthObservation = {
+    ...input,
+    id: devId(),
+    petId,
+    ownerUid,
+    createdByUid: ownerUid,
+    isArchived: false,
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  if (IS_DEV_BYPASS) {
+    devObservations = [obs, ...devObservations];
+    return obs;
+  }
+  const { getFirestore, collection, doc, setDoc, serverTimestamp } = await import('firebase/firestore');
+  const ref = doc(collection(getFirestore(), obsColPath(ownerUid, petId)));
+  await setDoc(ref, { ...obs, id: ref.id, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+  return { ...obs, id: ref.id };
+}
+
+// ─────────────────────────────────────────────────────────────
+//  Flags / Allergies (HLT-002)
+// ─────────────────────────────────────────────────────────────
+
+let devFlags: HealthFlag[] = [];
+const flagColPath = (uid: string, petId: string) => `ownerPets/${uid}/pets/${petId}/flags`;
+
+export function subscribeToFlags(
+  ownerUid: string,
+  petId: string,
+  onUpdate: (flags: HealthFlag[]) => void,
+): () => void {
+  if (IS_DEV_BYPASS) {
+    onUpdate(devFlags.filter((f) => f.petId === petId));
+    return () => {};
+  }
+  void (async () => {
+    const { getFirestore, collection, query, orderBy, onSnapshot } = await import('firebase/firestore');
+    const q = query(collection(getFirestore(), flagColPath(ownerUid, petId)), orderBy('createdAt', 'desc'));
+    return onSnapshot(q, (snap) => { onUpdate(snap.docs.map((d) => d.data() as HealthFlag)); });
+  })();
+  return () => {};
+}
+
+export async function createFlag(
+  ownerUid: string,
+  petId: string,
+  input: Omit<HealthFlag, 'id' | 'petId' | 'ownerUid' | 'provenance' | 'createdAt' | 'updatedAt'>,
+): Promise<HealthFlag> {
+  const now = new Date().toISOString();
+  const flag: HealthFlag = {
+    ...input,
+    id: devId(),
+    petId,
+    ownerUid,
+    provenance: 'OWNER_ENTERED',
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  if (IS_DEV_BYPASS) {
+    devFlags = [flag, ...devFlags];
+    return flag;
+  }
+  const { getFirestore, collection, doc, setDoc, serverTimestamp } = await import('firebase/firestore');
+  const ref = doc(collection(getFirestore(), flagColPath(ownerUid, petId)));
+  await setDoc(ref, { ...flag, id: ref.id, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+  return { ...flag, id: ref.id };
 }

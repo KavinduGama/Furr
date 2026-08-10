@@ -130,6 +130,25 @@ export type HealthObservation = {
   updatedAt: string;
 };
 
+// ── Allergies & Conditions (HLT-002) ──────────────────────────
+
+export type HealthFlagType = 'allergy' | 'condition';
+export type HealthFlagStatus = 'active' | 'inactive' | 'unknown';
+
+export type HealthFlag = {
+  id: string;
+  petId: string;
+  ownerUid: string;
+  type: HealthFlagType;
+  title: string;
+  status: HealthFlagStatus;
+  startedOn?: string; // YYYY-MM-DD
+  notes?: string;
+  provenance: 'OWNER_ENTERED' | 'VET_VERIFIED';
+  createdAt: string;
+  updatedAt: string;
+};
+
 // ── Documents ─────────────────────────────────────────────────
 
 export const DOC_TYPES = [

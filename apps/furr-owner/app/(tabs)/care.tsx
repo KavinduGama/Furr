@@ -1,9 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { Pressable, StyleSheet, Text, View, ActivityIndicator } from 'react-native';
+import { Pressable, StyleSheet, Text, View, ActivityIndicator, Alert } from 'react-native';
 import type { VaccinationRecord, MedicationPlan, WeightEntry } from '@furr/core';
 import { colors, radius, space } from '@furr/ui';
 import { Screen } from '@/src/components/screen';
+import { useAuth } from '@/src/context/auth';
 import { usePets } from '@/src/context/pets';
 import { useHealth } from '@/src/context/health';
 
@@ -46,8 +47,9 @@ function weightTrend(entries: WeightEntry[]): string | null {
 }
 
 export default function CareScreen() {
+  const { firebaseUser } = useAuth();
   const { selectedPet } = usePets();
-  const { vaccinations, medications, weights, documents, isLoading } = useHealth();
+  const { vaccinations, medications, weights, documents, isLoading, removeMedication } = useHealth();
 
   if (isLoading) {
     return (
@@ -184,7 +186,33 @@ export default function CareScreen() {
         </Pressable>
       ) : (
         medications.map((med) => (
-          <View key={med.id} style={styles.recordCard}>
+          <Pressable
+            key={med.id}
+            style={styles.recordCard}
+            onPress={() => {
+              Alert.alert(
+                `End ${med.medicationName}?`,
+                'This will archive the medication plan. It will still show in the timeline but will no longer be active.',
+                [
+                  { text: 'Cancel', style: 'cancel' },
+                  {
+                    text: 'End plan',
+                    style: 'destructive',
+                    onPress: async () => {
+                      if (!firebaseUser || !selectedPet) return;
+                      try {
+                        const { deactivateMedication } = await import('@furr/firebase');
+                        await deactivateMedication(firebaseUser.uid, selectedPet.id, med.id);
+                        removeMedication(med.id);
+                      } catch {
+                        Alert.alert('Error', 'Could not end medication plan.');
+                      }
+                    },
+                  },
+                ]
+              );
+            }}
+          >
             <View style={styles.recordMain}>
               <View style={[styles.recordIcon, { backgroundColor: colors.warm }]}>
                 <Ionicons name="medical" size={17} color={colors.accent} />
@@ -194,12 +222,13 @@ export default function CareScreen() {
                 <Text style={styles.recordMeta}>{med.doseInstruction}</Text>
                 <Text style={styles.recordMeta}>{freqLabel(med)}</Text>
                 {med.reason && <Text style={styles.recordMeta}>Reason: {med.reason}</Text>}
+                <Text style={{ color: colors.danger, fontSize: 11, fontWeight: '800', marginTop: 4 }}>Tap to end plan</Text>
               </View>
               <View style={[styles.badge, { backgroundColor: '#EEFAF5' }]}>
                 <Text style={[styles.badgeText, { color: colors.success }]}>Active</Text>
               </View>
             </View>
-          </View>
+          </Pressable>
         ))
       )}
 
@@ -312,7 +341,7 @@ export default function CareScreen() {
         </Pressable>
       </Pressable>
 
-      {/* ── Share + Reminders ─────────────────────── */}
+      {/* ── Share + Reminders + Observations ─────────────────────── */}
       <View style={styles.actionGrid}>
         <Pressable
           accessibilityRole="button"
@@ -335,6 +364,17 @@ export default function CareScreen() {
           </View>
           <Text style={styles.actionTitle}>Reminders</Text>
           <Text style={styles.actionSub}>Care schedule and alerts</Text>
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          style={styles.actionCard}
+          onPress={() => router.push('/health/add-observation' as never)}
+        >
+          <View style={[styles.actionIcon, { backgroundColor: '#F3EEFF' }]}>
+            <Ionicons name="medical" size={20} color="#7C5CBF" />
+          </View>
+          <Text style={styles.actionTitle}>Observation</Text>
+          <Text style={styles.actionSub}>Log a symptom or note</Text>
         </Pressable>
       </View>
     </Screen>

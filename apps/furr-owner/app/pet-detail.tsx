@@ -9,6 +9,7 @@ import { Screen } from '@/src/components/screen';
 import { useAuth } from '@/src/context/auth';
 import { usePets } from '@/src/context/pets';
 import { useHealth } from '@/src/context/health';
+import { generateAndSharePdf } from '@/src/utils/pdf';
 
 // ─────────────────────────────────────────────────────────────
 //  Pet Detail screen  (PET-002/003/004)
@@ -37,7 +38,7 @@ function speciesEmoji(pet: Pet) {
 export default function PetDetailScreen() {
   const { firebaseUser } = useAuth();
   const { selectedPet, removePet } = usePets();
-  const { vaccinations, medications } = useHealth();
+  const { vaccinations, medications, flags } = useHealth();
   const [archiving, setArchiving] = useState(false);
 
   if (!selectedPet) {
@@ -154,6 +155,48 @@ export default function PetDetailScreen() {
           </View>
         )}
 
+        {/* Health Flags (Allergies/Conditions) */}
+        <View style={styles.flagsHeader}>
+          <Text style={styles.sectionEyebrow}>ALLERGIES & CONDITIONS</Text>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => router.push('/health/add-flag' as never)}
+          >
+            <Text style={styles.seeAll}>+ Add</Text>
+          </Pressable>
+        </View>
+
+        {flags.length === 0 ? (
+          <View style={styles.emptyFlags}>
+            <Text style={styles.emptyFlagsText}>No recorded allergies or chronic conditions.</Text>
+          </View>
+        ) : (
+          <View style={styles.flagsList}>
+            {flags.map((flag) => (
+              <View key={flag.id} style={styles.flagCard}>
+                <View style={styles.flagTop}>
+                  <Ionicons
+                    name={flag.type === 'allergy' ? 'warning' : 'medkit'}
+                    size={16}
+                    color={flag.type === 'allergy' ? '#E65100' : colors.brand}
+                  />
+                  <Text style={styles.flagTitle}>{flag.title}</Text>
+                  <View style={[styles.flagStatus, flag.status === 'active' ? styles.flagStatusActive : undefined]}>
+                    <Text style={[styles.flagStatusText, flag.status === 'active' ? styles.flagStatusTextActive : undefined]}>
+                      {flag.status.toUpperCase()}
+                    </Text>
+                  </View>
+                </View>
+                {flag.notes && <Text style={styles.flagNotes}>{flag.notes}</Text>}
+                <Text style={styles.flagMeta}>
+                  {flag.provenance === 'VET_VERIFIED' ? 'Vet verified' : 'Owner entered'}
+                  {flag.startedOn ? ` · Since ${flag.startedOn}` : ''}
+                </Text>
+              </View>
+            ))}
+          </View>
+        )}
+
         {/* Health timeline */}
         <View style={styles.timelineHeader}>
           <Text style={styles.sectionEyebrow}>HEALTH TIMELINE</Text>
@@ -200,6 +243,20 @@ export default function PetDetailScreen() {
             </Pressable>
           </View>
         )}
+
+        {/* Export PDF (SHR-003) */}
+        <Pressable
+          accessibilityRole="button"
+          style={styles.exportBtn}
+          onPress={() => {
+            if (selectedPet) {
+              generateAndSharePdf(selectedPet, flags, vaccinations, medications);
+            }
+          }}
+        >
+          <Ionicons name="document-text" size={16} color={colors.brand} />
+          <Text style={styles.exportBtnText}>Export health summary (PDF)</Text>
+        </Pressable>
 
         {/* Archive */}
         <Pressable
@@ -286,8 +343,26 @@ const styles = StyleSheet.create({
   emptyTimelineTitle: { color: colors.ink, fontSize: 15, fontWeight: '900' },
   emptyTimelineCopy: { color: colors.muted, fontSize: 13, lineHeight: 18, textAlign: 'center', maxWidth: 260 },
 
-  archiveBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12 },
-  archiveBtnText: { color: colors.muted, fontSize: 13, fontWeight: '700' },
+  exportBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, paddingVertical: 14, marginTop: 10, backgroundColor: colors.mist, borderRadius: radius.md, borderWidth: 1, borderColor: colors.softBrand },
+  exportBtnText: { color: colors.brand, fontSize: 13, fontWeight: '800' },
+
+  archiveBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, paddingVertical: 14, marginTop: 10 },
+  archiveBtnText: { color: colors.danger, fontSize: 13, fontWeight: '800' },
+
+  flagsHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 4 },
+  emptyFlags: { backgroundColor: colors.surface, padding: 16, borderRadius: radius.md, borderWidth: 1, borderColor: colors.line, borderStyle: 'dashed' },
+  emptyFlagsText: { color: colors.muted, fontSize: 13, textAlign: 'center' },
+  flagsList: { gap: 10 },
+  flagCard: { backgroundColor: colors.surface, padding: 14, borderRadius: radius.md, borderWidth: 1, borderColor: colors.line, gap: 6 },
+  flagTop: { flexDirection: 'row', alignItems: 'center', gap: 7 },
+  flagTitle: { flex: 1, color: colors.ink, fontSize: 14, fontWeight: '900' },
+  flagStatus: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: radius.sm, backgroundColor: colors.mist },
+  flagStatusActive: { backgroundColor: '#FFF0E5' },
+  flagStatusText: { fontSize: 9, fontWeight: '900', color: colors.muted, letterSpacing: 0.5 },
+  flagStatusTextActive: { color: '#E65100' },
+  flagNotes: { color: colors.muted, fontSize: 13, lineHeight: 18 },
+  flagMeta: { color: colors.muted, fontSize: 11, marginTop: 4 },
+
   recordSummary: { backgroundColor: colors.surface, borderRadius: radius.lg, padding: 16, borderWidth: 1, borderColor: colors.line, gap: 10 },
   recordSummaryRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   recordSummaryText: { color: colors.ink, fontSize: 14, fontWeight: '800' },
