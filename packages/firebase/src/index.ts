@@ -55,3 +55,13 @@ export {
   DevConfirmationResult,
   DEV_BYPASS_CODE,
 } from './auth';
+
+// ── Re-exports from pet repository ───────────────────────────
+
+export {
+  subscribeToPets,
+  createPet,
+  updatePet,
+  archivePet,
+  restorePet,
+} from './pets';

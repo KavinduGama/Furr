@@ -1,16 +1,264 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Stack } from 'expo-router';
-import { Image, StyleSheet, Text, View } from 'react-native';
-import { demoRecords } from '@furr/core';
+import { router, Stack } from 'expo-router';
+import { useState } from 'react';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import type { Pet } from '@furr/core';
+import { archivePet } from '@furr/firebase';
 import { colors, radius, space } from '@furr/ui';
 import { Screen } from '@/src/components/screen';
+import { useAuth } from '@/src/context/auth';
+import { usePets } from '@/src/context/pets';
 
-const maxPortrait = require('../assets/furr/max-hero-editorial.png');
+// ─────────────────────────────────────────────────────────────
+//  Pet Detail screen  (PET-002/003/004)
+//  Shows the selected pet's profile and health timeline.
+// ─────────────────────────────────────────────────────────────
 
-export default function PetDetailScreen() {
-  return <><Stack.Screen options={{ headerShown: true, title: 'Max', headerStyle: { backgroundColor: colors.canvas }, headerShadowVisible: false }} /><Screen><View style={styles.identity}><Image source={maxPortrait} style={styles.avatar} resizeMode="cover" /><View><Text style={styles.name}>Max</Text><Text style={styles.meta}>Golden Retriever · Male · 2 years</Text></View></View><View style={styles.metrics}><View><Text style={styles.metricLabel}>WEIGHT</Text><Text style={styles.metric}>28.5 kg</Text></View><View><Text style={styles.metricLabel}>BLOOD TYPE</Text><Text style={styles.metric}>DEA 1.1+</Text></View></View><Text style={styles.section}>HEALTH TIMELINE</Text>{demoRecords.filter((record) => record.petId === 'max').map((record) => <View key={record.id} style={styles.record}><Ionicons name={record.category === 'vaccination' ? 'shield-checkmark' : 'medical'} size={19} color={colors.brand} /><View><Text style={styles.recordTitle}>{record.title}</Text><Text style={styles.recordMeta}>{record.occurredAt} · {record.provenance === 'VET_VERIFIED' || record.provenance === 'VET_AUTHORED' ? 'Vet verified' : 'Owner recorded'}</Text></View></View>)}</Screen></>;
+function petMetaLine(pet: Pet): string {
+  const parts: string[] = [];
+  if (pet.breed) parts.push(pet.breed);
+  if (pet.sex && pet.sex !== 'unknown') parts.push(pet.sex.charAt(0).toUpperCase() + pet.sex.slice(1));
+  if (pet.birthDate) {
+    const months =
+      (new Date().getFullYear() - new Date(pet.birthDate).getFullYear()) * 12 +
+      (new Date().getMonth() - new Date(pet.birthDate).getMonth());
+    const years = Math.floor(months / 12);
+    if (years >= 1) parts.push(`${years} year${years !== 1 ? 's' : ''} old`);
+    else parts.push(`${months} month${months !== 1 ? 's' : ''} old`);
+  }
+  return parts.join(' · ');
 }
 
+function speciesEmoji(pet: Pet) {
+  return pet.species === 'cat' ? '🐈' : '🐕';
+}
+
+export default function PetDetailScreen() {
+  const { firebaseUser } = useAuth();
+  const { selectedPet, removePet } = usePets();
+  const [archiving, setArchiving] = useState(false);
+
+  if (!selectedPet) {
+    return (
+      <Screen>
+        <View style={styles.empty}>
+          <Text style={styles.emptyText}>No pet selected.</Text>
+          <Pressable onPress={() => router.back()} accessibilityRole="button">
+            <Text style={styles.backLink}>Go back</Text>
+          </Pressable>
+        </View>
+      </Screen>
+    );
+  }
+
+  const handleArchive = () => {
+    Alert.alert(
+      `Archive ${selectedPet.name}?`,
+      'Their records will remain safe. You can restore them anytime from your archived pets.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Archive',
+          style: 'destructive',
+          onPress: async () => {
+            if (!firebaseUser) return;
+            setArchiving(true);
+            try {
+              await archivePet(firebaseUser.uid, selectedPet.id);
+              removePet(selectedPet.id);
+              router.back();
+            } catch {
+              Alert.alert('Something went wrong', 'Couldn\'t archive. Please try again.');
+            } finally {
+              setArchiving(false);
+            }
+          },
+        },
+      ],
+    );
+  };
+
+  return (
+    <>
+      <Stack.Screen
+        options={{
+          headerShown: true,
+          title: selectedPet.name,
+          headerStyle: { backgroundColor: colors.canvas },
+          headerShadowVisible: false,
+          headerTitleStyle: { fontWeight: '900', color: colors.ink },
+          headerLeft: () => (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Back"
+              onPress={() => router.back()}
+              style={{ paddingRight: 8 }}
+            >
+              <Ionicons name="arrow-back" size={22} color={colors.ink} />
+            </Pressable>
+          ),
+          headerRight: () => (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Edit pet"
+              onPress={() => router.push('/pet/add' as never)}
+              style={{ paddingLeft: 8 }}
+            >
+              <Text style={styles.editBtn}>Edit</Text>
+            </Pressable>
+          ),
+        }}
+      />
+      <ScrollView style={styles.scroll} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        {/* Identity card */}
+        <View style={styles.identity}>
+          <View style={styles.avatarWrap}>
+            <Text style={styles.avatarEmoji}>{speciesEmoji(selectedPet)}</Text>
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.name}>{selectedPet.name}</Text>
+            <Text style={styles.meta}>{petMetaLine(selectedPet)}</Text>
+            {selectedPet.colour && (
+              <Text style={styles.meta}>Colour: {selectedPet.colour}</Text>
+            )}
+          </View>
+        </View>
+
+        {/* Quick stats */}
+        <View style={styles.statsRow}>
+          {selectedPet.microchipNumber && (
+            <View style={styles.statBox}>
+              <Text style={styles.statLabel}>MICROCHIP</Text>
+              <Text style={styles.statValue} numberOfLines={1}>{selectedPet.microchipNumber}</Text>
+            </View>
+          )}
+          {selectedPet.isNeutered !== undefined && selectedPet.isNeutered !== null && (
+            <View style={styles.statBox}>
+              <Text style={styles.statLabel}>NEUTERED</Text>
+              <Text style={styles.statValue}>{selectedPet.isNeutered ? 'Yes' : 'No'}</Text>
+            </View>
+          )}
+          <View style={[styles.statBox, { flex: 1 }]}>
+            <Text style={styles.statLabel}>STATUS</Text>
+            <Text style={[styles.statValue, { color: colors.success }]}>Active</Text>
+          </View>
+        </View>
+
+        {/* Note */}
+        {selectedPet.generalNote && (
+          <View style={styles.noteBox}>
+            <Text style={styles.noteLabel}>NOTE</Text>
+            <Text style={styles.noteText}>{selectedPet.generalNote}</Text>
+          </View>
+        )}
+
+        {/* Health timeline placeholder */}
+        <View style={styles.timelineHeader}>
+          <Text style={styles.sectionEyebrow}>HEALTH TIMELINE</Text>
+          <Pressable accessibilityRole="button">
+            <Text style={styles.seeAll}>Add record</Text>
+          </Pressable>
+        </View>
+
+        <View style={styles.emptyTimeline}>
+          <Ionicons name="document-text-outline" size={32} color={colors.muted} />
+          <Text style={styles.emptyTimelineTitle}>No records yet</Text>
+          <Text style={styles.emptyTimelineCopy}>
+            Add a vaccination, medication, or health observation to get started.
+          </Text>
+        </View>
+
+        {/* Archive */}
+        <Pressable
+          accessibilityRole="button"
+          style={styles.archiveBtn}
+          onPress={handleArchive}
+          disabled={archiving}
+        >
+          <Ionicons name="archive-outline" size={16} color={colors.muted} />
+          <Text style={styles.archiveBtnText}>
+            {archiving ? 'Archiving…' : `Archive ${selectedPet.name}`}
+          </Text>
+        </Pressable>
+      </ScrollView>
+    </>
+  );
+}
+
+// ── Styles ────────────────────────────────────────────────────
+
 const styles = StyleSheet.create({
-  identity: { backgroundColor: colors.surface, padding: space.md, borderRadius: radius.lg, flexDirection: 'row', alignItems: 'center', gap: 14, borderWidth: 1, borderColor: '#E8E6DF' }, avatar: { width: 64, height: 64, borderRadius: 24, backgroundColor: '#E8C9A6' }, name: { color: colors.ink, fontSize: 22, fontWeight: '900' }, meta: { color: colors.muted, fontSize: 13, marginTop: 4 }, metrics: { backgroundColor: colors.surface, padding: space.md, borderRadius: radius.md, flexDirection: 'row', justifyContent: 'space-between', borderWidth: 1, borderColor: '#E8E6DF' }, metricLabel: { color: colors.muted, fontSize: 10, fontWeight: '800', letterSpacing: 1 }, metric: { color: colors.ink, fontSize: 16, fontWeight: '900', marginTop: 6 }, section: { color: colors.muted, fontSize: 11, fontWeight: '900', letterSpacing: 1.2, marginTop: 4 }, record: { backgroundColor: colors.surface, padding: 14, borderRadius: radius.md, flexDirection: 'row', gap: 12, alignItems: 'center', borderWidth: 1, borderColor: '#E8E6DF' }, recordTitle: { color: colors.ink, fontWeight: '900' }, recordMeta: { color: colors.muted, fontSize: 12, marginTop: 4 },
+  scroll: { flex: 1, backgroundColor: colors.canvas },
+  content: { padding: space.md, gap: space.md, paddingBottom: 48 },
+
+  empty: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
+  emptyText: { color: colors.muted, fontSize: 15 },
+  backLink: { color: colors.brand, fontWeight: '800' },
+
+  editBtn: { color: colors.brand, fontSize: 15, fontWeight: '800' },
+
+  identity: {
+    backgroundColor: colors.surface,
+    padding: space.md,
+    borderRadius: radius.lg,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    borderWidth: 1.5,
+    borderColor: colors.line,
+  },
+  avatarWrap: { width: 72, height: 72, borderRadius: 24, backgroundColor: colors.pearl, alignItems: 'center', justifyContent: 'center' },
+  avatarEmoji: { fontSize: 36 },
+  name: { color: colors.ink, fontSize: 24, fontWeight: '900', letterSpacing: -0.6 },
+  meta: { color: colors.muted, fontSize: 13, marginTop: 3 },
+
+  statsRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  statBox: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: colors.line,
+    minWidth: 90,
+  },
+  statLabel: { color: colors.muted, fontSize: 9, fontWeight: '900', letterSpacing: 1 },
+  statValue: { color: colors.ink, fontSize: 14, fontWeight: '900', marginTop: 5 },
+
+  noteBox: {
+    backgroundColor: colors.warm,
+    borderRadius: radius.md,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#F0D89A',
+  },
+  noteLabel: { color: '#B8870F', fontSize: 9, fontWeight: '900', letterSpacing: 1 },
+  noteText: { color: colors.ink, fontSize: 14, lineHeight: 20, marginTop: 5 },
+
+  timelineHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  sectionEyebrow: { color: colors.muted, fontSize: 10, fontWeight: '900', letterSpacing: 1.2 },
+  seeAll: { color: colors.brand, fontSize: 12, fontWeight: '900' },
+
+  emptyTimeline: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    padding: 28,
+    alignItems: 'center',
+    gap: 8,
+    borderWidth: 1,
+    borderColor: colors.line,
+  },
+  emptyTimelineTitle: { color: colors.ink, fontSize: 15, fontWeight: '900' },
+  emptyTimelineCopy: { color: colors.muted, fontSize: 13, lineHeight: 18, textAlign: 'center', maxWidth: 260 },
+
+  archiveBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 12,
+  },
+  archiveBtnText: { color: colors.muted, fontSize: 13, fontWeight: '700' },
 });

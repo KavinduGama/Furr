@@ -58,6 +58,9 @@ importers:
 
   packages/firebase:
     dependencies:
+      '@furr/core':
+        specifier: workspace:*
+        version: link:../core
       firebase:
         specifier: 12.16.0
         version: 12.16.0

@@ -5,6 +5,7 @@
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "dependencies": {
+    "@furr/core": "workspace:*",
     "firebase": "12.16.0"
   }
 }
