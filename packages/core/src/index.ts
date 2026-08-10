@@ -8,8 +8,15 @@ export type {
   VaccineType,
   MedicationPlan,
   FrequencyPattern,
+  WeightEntry,
+  WeightUnit,
+  HealthObservation,
+  ObservationCategory,
+  ObservationSeverity,
+  TimelineItem,
+  TimelineFilter,
 } from './health';
-export { VACCINE_TYPES } from './health';
+export { VACCINE_TYPES, buildTimeline } from './health';
 
 // ── Roles ────────────────────────────────────────────────────
 

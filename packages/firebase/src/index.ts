@@ -76,4 +76,7 @@ export {
   subscribeToMedications,
   createMedication,
   deactivateMedication,
+  subscribeToWeightEntries,
+  createWeightEntry,
+  deleteWeightEntry,
 } from './health';

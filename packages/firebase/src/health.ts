@@ -2,7 +2,7 @@
 //  @furr/firebase — Vaccination + Medication repositories
 // ─────────────────────────────────────────────────────────────
 
-import type { VaccinationRecord, MedicationPlan } from '@furr/core';
+import type { VaccinationRecord, MedicationPlan, WeightEntry } from '@furr/core';
 
 const IS_DEV_BYPASS = typeof process !== 'undefined' && !process.env?.EXPO_PUBLIC_FIREBASE_API_KEY;
 
@@ -145,4 +145,57 @@ export async function deactivateMedication(ownerUid: string, petId: string, medI
   }
   const { getFirestore, doc, updateDoc, serverTimestamp } = await import('firebase/firestore');
   await updateDoc(doc(getFirestore(), medPath(ownerUid, petId), medId), { isActive: false, updatedAt: serverTimestamp() });
+}
+
+// ─────────────────────────────────────────────────────────────
+//  Weight
+// ─────────────────────────────────────────────────────────────
+
+let devWeights: WeightEntry[] = [];
+const wgtPath = (uid: string, petId: string) => `ownerPets/${uid}/pets/${petId}/weights`;
+
+export function subscribeToWeightEntries(
+  ownerUid: string,
+  petId: string,
+  onUpdate: (entries: WeightEntry[]) => void,
+): () => void {
+  if (IS_DEV_BYPASS) {
+    onUpdate(devWeights.filter((w) => w.petId === petId));
+    return () => {};
+  }
+  void (async () => {
+    const { getFirestore, collection, query, orderBy, onSnapshot } = await import('firebase/firestore');
+    const db = getFirestore();
+    const q = query(collection(db, wgtPath(ownerUid, petId)), orderBy('measuredOn', 'desc'));
+    return onSnapshot(q, (snap) => { onUpdate(snap.docs.map((d) => d.data() as WeightEntry)); });
+  })();
+  return () => {};
+}
+
+export async function createWeightEntry(
+  ownerUid: string,
+  petId: string,
+  data: Omit<WeightEntry, 'id' | 'petId' | 'ownerUid' | 'createdAt' | 'updatedAt'>,
+): Promise<WeightEntry> {
+  const now = new Date().toISOString();
+  if (IS_DEV_BYPASS) {
+    const entry: WeightEntry = { ...data, id: devId(), petId, ownerUid, createdAt: now, updatedAt: now };
+    devWeights = [entry, ...devWeights];
+    return entry;
+  }
+  const { getFirestore, collection, doc, setDoc, serverTimestamp } = await import('firebase/firestore');
+  const db = getFirestore();
+  const ref = doc(collection(db, wgtPath(ownerUid, petId)));
+  const entry: WeightEntry = { ...data, id: ref.id, petId, ownerUid, createdAt: now, updatedAt: now };
+  await setDoc(ref, { ...entry, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+  return entry;
+}
+
+export async function deleteWeightEntry(ownerUid: string, petId: string, entryId: string): Promise<void> {
+  if (IS_DEV_BYPASS) {
+    devWeights = devWeights.filter((w) => w.id !== entryId);
+    return;
+  }
+  const { getFirestore, doc, deleteDoc } = await import('firebase/firestore');
+  await deleteDoc(doc(getFirestore(), wgtPath(ownerUid, petId), entryId));
 }
