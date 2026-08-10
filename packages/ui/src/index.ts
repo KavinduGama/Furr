@@ -1,3 +1,9 @@
+// ─────────────────────────────────────────────────────────────
+//  @furr/ui — design tokens + reusable components
+// ─────────────────────────────────────────────────────────────
+
+// ── Tokens ───────────────────────────────────────────────────
+
 export const colors = {
   ink: '#10242D',
   muted: '#66757C',
@@ -17,3 +23,16 @@ export const colors = {
 
 export const radius = { sm: 14, md: 20, lg: 30, xl: 36, pill: 999 } as const;
 export const space = { xs: 6, sm: 10, md: 16, lg: 24, xl: 32 } as const;
+
+// ── Component exports ─────────────────────────────────────────
+
+export { Button } from './components/Button';
+export type { ButtonProps } from './components/Button';
+
+export { TextInput } from './components/TextInput';
+export type { TextInputProps } from './components/TextInput';
+
+export { OtpInput } from './components/OtpInput';
+export type { OtpInputProps } from './components/OtpInput';
+
+export { KeyboardScreen } from './components/KeyboardScreen';
