@@ -2,6 +2,15 @@
 //  @furr/core — domain types, validation, and provenance rules
 // ─────────────────────────────────────────────────────────────
 
+// ── Health record types ───────────────────────────────────────
+export type {
+  VaccinationRecord,
+  VaccineType,
+  MedicationPlan,
+  FrequencyPattern,
+} from './health';
+export { VACCINE_TYPES } from './health';
+
 // ── Roles ────────────────────────────────────────────────────
 
 export type AppRole = 'owner' | 'professional' | 'clinic_operator' | 'admin';

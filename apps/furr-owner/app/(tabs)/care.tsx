@@ -1,17 +1,231 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { colors, radius } from '@furr/ui';
+import { router } from 'expo-router';
+import { Pressable, StyleSheet, Text, View, ActivityIndicator } from 'react-native';
+import type { VaccinationRecord, MedicationPlan } from '@furr/core';
+import { colors, radius, space } from '@furr/ui';
 import { Screen } from '@/src/components/screen';
+import { usePets } from '@/src/context/pets';
+import { useHealth } from '@/src/context/health';
 
-const items = [
-  ['Medication', 'One dose due this evening', 'medical', '#DDF5F1'],
-  ['Vaccinations', 'All certificates are current', 'shield-checkmark', '#E5F0FF'],
-  ['Documents', 'Four protected health files', 'document-text', '#FFF1D7'],
-  ['Share with a vet', 'Create secure temporary access', 'share-social', '#F1E8FF'],
-] as const;
+// ─────────────────────────────────────────────────────────────
+//  Care Centre tab  (VAC-001/002, MED-001/002)
+// ─────────────────────────────────────────────────────────────
 
-export default function CareScreen() {
-  return <Screen><View><Text style={styles.eyebrow}>MAX'S HEALTH HOME</Text><Text style={styles.title}>Care centre</Text><Text style={styles.copy}>Small actions. A lifetime of care.</Text></View><View style={styles.healthStrip}><View><Text style={styles.healthLabel}>CARE STATUS</Text><Text style={styles.healthTitle}>Everything is on track.</Text></View><View style={styles.healthBadge}><Ionicons name="heart" size={19} color={colors.brand} /></View></View><Text style={styles.section}>KEEPING MAX WELL</Text>{items.map(([title, detail, icon, tint]) => <Pressable accessibilityRole="button" style={styles.item} key={title}><View style={[styles.icon, { backgroundColor: tint }]}><Ionicons name={icon} size={20} color={colors.brand} /></View><View style={{ flex: 1 }}><Text style={styles.itemTitle}>{title}</Text><Text style={styles.itemCopy}>{detail}</Text></View><Ionicons name="chevron-forward" size={19} color="#A3ADB0" /></Pressable>)}</Screen>;
+function provenanceBadge(prov: VaccinationRecord['provenance']) {
+  switch (prov) {
+    case 'VET_VERIFIED':
+    case 'VET_AUTHORED':
+      return { label: 'Vet verified', color: colors.success, bg: '#EEFAF5' };
+    case 'OWNER_ENTERED_WITH_DOCUMENT':
+      return { label: 'With document', color: '#B8870F', bg: colors.warm };
+    default:
+      return { label: 'Owner entered', color: colors.muted, bg: colors.pearl };
+  }
 }
 
-const styles = StyleSheet.create({ eyebrow: { color: colors.brand, fontWeight: '900', fontSize: 10, letterSpacing: 1.2 }, title: { color: colors.ink, fontSize: 31, fontWeight: '900', letterSpacing: -1.2, marginTop: 4 }, copy: { color: colors.muted, marginTop: 6 }, healthStrip: { backgroundColor: colors.brand, borderRadius: radius.lg, padding: 18, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }, healthLabel: { color: '#A4E6DF', fontSize: 10, fontWeight: '900', letterSpacing: 1 }, healthTitle: { color: '#fff', fontSize: 18, fontWeight: '900', marginTop: 5 }, healthBadge: { height: 46, width: 46, borderRadius: 23, alignItems: 'center', justifyContent: 'center', backgroundColor: '#C9F1EA' }, section: { color: '#758187', fontWeight: '900', fontSize: 10, letterSpacing: 1.2, marginTop: 5 }, item: { backgroundColor: colors.surface, padding: 15, borderRadius: radius.md, flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1, borderColor: '#E8E6DF' }, icon: { height: 44, width: 44, borderRadius: 15, alignItems: 'center', justifyContent: 'center' }, itemTitle: { color: colors.ink, fontSize: 15, fontWeight: '900' }, itemCopy: { color: colors.muted, fontSize: 12, marginTop: 3, lineHeight: 16 }, });
+function freqLabel(plan: MedicationPlan): string {
+  const f = plan.frequency;
+  switch (f.kind) {
+    case 'once': return 'One time';
+    case 'every_n_hours': return `Every ${f.hours}h`;
+    case 'daily': return `Daily · ${f.times.join(', ')}`;
+    case 'weekly': return `Weekly`;
+  }
+}
+
+export default function CareScreen() {
+  const { selectedPet } = usePets();
+  const { vaccinations, medications, isLoading } = useHealth();
+
+  if (isLoading) {
+    return (
+      <Screen>
+        <View style={styles.loadingBox}>
+          <ActivityIndicator color={colors.brand} size="large" />
+        </View>
+      </Screen>
+    );
+  }
+
+  const petName = selectedPet?.name ?? 'your pet';
+
+  return (
+    <Screen>
+      {/* Header */}
+      <View style={styles.header}>
+        <View>
+          <Text style={styles.eyebrow}>HEALTH RECORDS</Text>
+          <Text style={styles.title}>Care centre</Text>
+          {selectedPet && <Text style={styles.sub}>Showing records for {petName}</Text>}
+        </View>
+        {/* Add record menu */}
+        <View style={styles.addBtns}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Add vaccination"
+            style={styles.addBtn}
+            onPress={() => router.push('/health/add-vaccination' as never)}
+          >
+            <Ionicons name="shield-checkmark" size={16} color="#fff" />
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Add medication"
+            style={[styles.addBtn, { backgroundColor: colors.accent }]}
+            onPress={() => router.push('/health/add-medication' as never)}
+          >
+            <Ionicons name="medical" size={16} color="#fff" />
+          </Pressable>
+        </View>
+      </View>
+
+      {/* ── Vaccinations ─────────────────────────────── */}
+      <View style={styles.sectionHeader}>
+        <View style={styles.sectionTitleRow}>
+          <Ionicons name="shield-checkmark" size={15} color={colors.brand} />
+          <Text style={styles.sectionTitle}>VACCINATIONS</Text>
+        </View>
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => router.push('/health/add-vaccination' as never)}
+        >
+          <Text style={styles.addLink}>+ Add</Text>
+        </Pressable>
+      </View>
+
+      {vaccinations.length === 0 ? (
+        <Pressable
+          accessibilityRole="button"
+          style={styles.emptyCard}
+          onPress={() => router.push('/health/add-vaccination' as never)}
+        >
+          <Ionicons name="shield-outline" size={20} color={colors.muted} />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.emptyTitle}>No vaccinations yet</Text>
+            <Text style={styles.emptyCopy}>Add {petName}'s vaccination history to build a trusted record.</Text>
+          </View>
+          <Ionicons name="arrow-forward" size={15} color={colors.brand} />
+        </Pressable>
+      ) : (
+        vaccinations.map((vac) => {
+          const badge = provenanceBadge(vac.provenance);
+          const displayName = vac.vaccineType === 'Other' ? (vac.customVaccineName ?? 'Vaccine') : vac.vaccineType;
+          return (
+            <View key={vac.id} style={styles.recordCard}>
+              <View style={styles.recordMain}>
+                <View style={styles.recordIcon}>
+                  <Ionicons name="shield-checkmark" size={17} color={colors.brand} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.recordTitle}>{displayName}</Text>
+                  <Text style={styles.recordMeta}>Administered {vac.administeredOn}</Text>
+                  {vac.nextDueOn && (
+                    <Text style={styles.recordDue}>Next due {vac.nextDueOn}</Text>
+                  )}
+                  {vac.veterinarian && (
+                    <Text style={styles.recordMeta}>{vac.veterinarian}{vac.clinic ? ` · ${vac.clinic}` : ''}</Text>
+                  )}
+                </View>
+                <View style={[styles.badge, { backgroundColor: badge.bg }]}>
+                  <Text style={[styles.badgeText, { color: badge.color }]}>{badge.label}</Text>
+                </View>
+              </View>
+            </View>
+          );
+        })
+      )}
+
+      {/* ── Medications ──────────────────────────────── */}
+      <View style={[styles.sectionHeader, { marginTop: space.sm }]}>
+        <View style={styles.sectionTitleRow}>
+          <Ionicons name="medical" size={15} color={colors.accent} />
+          <Text style={styles.sectionTitle}>MEDICATIONS</Text>
+        </View>
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => router.push('/health/add-medication' as never)}
+        >
+          <Text style={styles.addLink}>+ Add</Text>
+        </Pressable>
+      </View>
+
+      {medications.length === 0 ? (
+        <Pressable
+          accessibilityRole="button"
+          style={styles.emptyCard}
+          onPress={() => router.push('/health/add-medication' as never)}
+        >
+          <Ionicons name="medkit-outline" size={20} color={colors.muted} />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.emptyTitle}>No active medications</Text>
+            <Text style={styles.emptyCopy}>Track {petName}'s supplements, prescriptions and treatments.</Text>
+          </View>
+          <Ionicons name="arrow-forward" size={15} color={colors.brand} />
+        </Pressable>
+      ) : (
+        medications.map((med) => (
+          <View key={med.id} style={styles.recordCard}>
+            <View style={styles.recordMain}>
+              <View style={[styles.recordIcon, { backgroundColor: colors.warm }]}>
+                <Ionicons name="medical" size={17} color={colors.accent} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.recordTitle}>{med.medicationName}</Text>
+                <Text style={styles.recordMeta}>{med.doseInstruction}</Text>
+                <Text style={styles.recordMeta}>{freqLabel(med)}</Text>
+                {med.reason && <Text style={styles.recordMeta}>Reason: {med.reason}</Text>}
+              </View>
+              <View style={[styles.badge, { backgroundColor: '#EEFAF5' }]}>
+                <Text style={[styles.badgeText, { color: colors.success }]}>Active</Text>
+              </View>
+            </View>
+          </View>
+        ))
+      )}
+
+      {/* Sharing placeholder */}
+      <View style={styles.shareBox}>
+        <Ionicons name="share-outline" size={18} color={colors.brand} />
+        <View style={{ flex: 1 }}>
+          <Text style={styles.shareTitle}>Share with your vet</Text>
+          <Text style={styles.shareCopy}>Generate a secure QR code — coming soon.</Text>
+        </View>
+        <View style={styles.comingSoon}>
+          <Text style={styles.comingSoonText}>SOON</Text>
+        </View>
+      </View>
+    </Screen>
+  );
+}
+
+// ── Styles ─────────────────────────────────────────────────────
+
+const styles = StyleSheet.create({
+  loadingBox: { flex: 1, alignItems: 'center', justifyContent: 'center', minHeight: 200 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+  eyebrow: { color: colors.brand, fontWeight: '900', fontSize: 10, letterSpacing: 1.2 },
+  title: { color: colors.ink, fontSize: 31, lineHeight: 35, fontWeight: '900', letterSpacing: -1.2, marginTop: 4 },
+  sub: { color: colors.muted, fontSize: 12, marginTop: 4 },
+  addBtns: { flexDirection: 'row', gap: 8, marginTop: 4 },
+  addBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.brand, alignItems: 'center', justifyContent: 'center' },
+  sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  sectionTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  sectionTitle: { color: colors.muted, fontSize: 10, fontWeight: '900', letterSpacing: 1.2 },
+  addLink: { color: colors.brand, fontSize: 12, fontWeight: '900' },
+  emptyCard: { backgroundColor: colors.surface, borderRadius: radius.md, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1, borderColor: colors.line },
+  emptyTitle: { color: colors.ink, fontSize: 14, fontWeight: '900' },
+  emptyCopy: { color: colors.muted, fontSize: 12, marginTop: 2, lineHeight: 16 },
+  recordCard: { backgroundColor: colors.surface, borderRadius: radius.md, padding: 14, borderWidth: 1, borderColor: colors.line },
+  recordMain: { flexDirection: 'row', alignItems: 'flex-start', gap: 11 },
+  recordIcon: { width: 38, height: 38, borderRadius: 12, backgroundColor: colors.mist, alignItems: 'center', justifyContent: 'center' },
+  recordTitle: { color: colors.ink, fontSize: 15, fontWeight: '900' },
+  recordMeta: { color: colors.muted, fontSize: 12, marginTop: 2 },
+  recordDue: { color: colors.accent, fontSize: 12, fontWeight: '800', marginTop: 2 },
+  badge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: radius.pill, alignSelf: 'flex-start' },
+  badgeText: { fontSize: 10, fontWeight: '900', letterSpacing: 0.4 },
+  shareBox: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: colors.mist, padding: 14, borderRadius: radius.md, borderWidth: 1, borderColor: colors.softBrand },
+  shareTitle: { color: colors.ink, fontSize: 14, fontWeight: '900' },
+  shareCopy: { color: colors.muted, fontSize: 12, marginTop: 2 },
+  comingSoon: { backgroundColor: colors.brand, paddingHorizontal: 8, paddingVertical: 4, borderRadius: radius.pill },
+  comingSoonText: { color: '#fff', fontSize: 9, fontWeight: '900', letterSpacing: 0.5 },
+});

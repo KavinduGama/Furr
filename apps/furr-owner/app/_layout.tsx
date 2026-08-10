@@ -2,6 +2,7 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { AuthProvider } from '@/src/context/auth';
 import { PetProvider } from '@/src/context/pets';
+import { HealthProvider } from '@/src/context/health';
 import { AuthNavigationGuard } from '@/src/components/AuthNavigationGuard';
 import {
   firebaseOptionsFromEnvironment,
@@ -16,10 +17,12 @@ export default function RootLayout() {
   return (
     <AuthProvider>
       <PetProvider>
-        <AuthNavigationGuard>
-          <StatusBar style="dark" />
-          <Stack screenOptions={{ headerShown: false, animation: 'fade' }} />
-        </AuthNavigationGuard>
+        <HealthProvider>
+          <AuthNavigationGuard>
+            <StatusBar style="dark" />
+            <Stack screenOptions={{ headerShown: false, animation: 'fade' }} />
+          </AuthNavigationGuard>
+        </HealthProvider>
       </PetProvider>
     </AuthProvider>
   );

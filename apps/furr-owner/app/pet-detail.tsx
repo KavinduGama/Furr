@@ -8,6 +8,7 @@ import { colors, radius, space } from '@furr/ui';
 import { Screen } from '@/src/components/screen';
 import { useAuth } from '@/src/context/auth';
 import { usePets } from '@/src/context/pets';
+import { useHealth } from '@/src/context/health';
 
 // ─────────────────────────────────────────────────────────────
 //  Pet Detail screen  (PET-002/003/004)
@@ -36,6 +37,7 @@ function speciesEmoji(pet: Pet) {
 export default function PetDetailScreen() {
   const { firebaseUser } = useAuth();
   const { selectedPet, removePet } = usePets();
+  const { vaccinations, medications } = useHealth();
   const [archiving, setArchiving] = useState(false);
 
   if (!selectedPet) {
@@ -152,21 +154,52 @@ export default function PetDetailScreen() {
           </View>
         )}
 
-        {/* Health timeline placeholder */}
+        {/* Health timeline */}
         <View style={styles.timelineHeader}>
           <Text style={styles.sectionEyebrow}>HEALTH TIMELINE</Text>
-          <Pressable accessibilityRole="button">
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => router.push('/health/add-vaccination' as never)}
+          >
             <Text style={styles.seeAll}>Add record</Text>
           </Pressable>
         </View>
 
-        <View style={styles.emptyTimeline}>
-          <Ionicons name="document-text-outline" size={32} color={colors.muted} />
-          <Text style={styles.emptyTimelineTitle}>No records yet</Text>
-          <Text style={styles.emptyTimelineCopy}>
-            Add a vaccination, medication, or health observation to get started.
-          </Text>
-        </View>
+        {vaccinations.length === 0 && medications.length === 0 ? (
+          <View style={styles.emptyTimeline}>
+            <Ionicons name="document-text-outline" size={32} color={colors.muted} />
+            <Text style={styles.emptyTimelineTitle}>No records yet</Text>
+            <Text style={styles.emptyTimelineCopy}>
+              Add a vaccination, medication, or health observation to get started.
+            </Text>
+          </View>
+        ) : (
+          <View style={styles.recordSummary}>
+            {vaccinations.length > 0 && (
+              <View style={styles.recordSummaryRow}>
+                <Ionicons name="shield-checkmark" size={16} color={colors.brand} />
+                <Text style={styles.recordSummaryText}>
+                  {vaccinations.length} vaccination{vaccinations.length !== 1 ? 's' : ''}
+                </Text>
+              </View>
+            )}
+            {medications.length > 0 && (
+              <View style={styles.recordSummaryRow}>
+                <Ionicons name="medical" size={16} color={colors.accent} />
+                <Text style={styles.recordSummaryText}>
+                  {medications.length} active medication{medications.length !== 1 ? 's' : ''}
+                </Text>
+              </View>
+            )}
+            <Pressable
+              accessibilityRole="button"
+              style={styles.viewAllBtn}
+              onPress={() => router.push('/(tabs)/care' as never)}
+            >
+              <Text style={styles.viewAllText}>View all in Care Centre →</Text>
+            </Pressable>
+          </View>
+        )}
 
         {/* Archive */}
         <Pressable
@@ -253,12 +286,11 @@ const styles = StyleSheet.create({
   emptyTimelineTitle: { color: colors.ink, fontSize: 15, fontWeight: '900' },
   emptyTimelineCopy: { color: colors.muted, fontSize: 13, lineHeight: 18, textAlign: 'center', maxWidth: 260 },
 
-  archiveBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 12,
-  },
+  archiveBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12 },
   archiveBtnText: { color: colors.muted, fontSize: 13, fontWeight: '700' },
+  recordSummary: { backgroundColor: colors.surface, borderRadius: radius.lg, padding: 16, borderWidth: 1, borderColor: colors.line, gap: 10 },
+  recordSummaryRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  recordSummaryText: { color: colors.ink, fontSize: 14, fontWeight: '800' },
+  viewAllBtn: { marginTop: 4 },
+  viewAllText: { color: colors.brand, fontSize: 13, fontWeight: '900' },
 });

@@ -65,3 +65,15 @@ export {
   archivePet,
   restorePet,
 } from './pets';
+
+// ── Re-exports from health repositories ──────────────────────
+
+export {
+  subscribeToVaccinations,
+  createVaccination,
+  updateVaccination,
+  archiveVaccination,
+  subscribeToMedications,
+  createMedication,
+  deactivateMedication,
+} from './health';
