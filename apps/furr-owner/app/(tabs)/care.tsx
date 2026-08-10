@@ -312,16 +312,30 @@ export default function CareScreen() {
         </Pressable>
       </Pressable>
 
-      {/* Sharing placeholder */}
-      <View style={styles.shareBox}>
-        <Ionicons name="share-outline" size={18} color={colors.brand} />
-        <View style={{ flex: 1 }}>
-          <Text style={styles.shareTitle}>Share with your vet</Text>
-          <Text style={styles.shareCopy}>Generate a secure QR code — coming soon.</Text>
-        </View>
-        <View style={styles.comingSoon}>
-          <Text style={styles.comingSoonText}>SOON</Text>
-        </View>
+      {/* ── Share + Reminders ─────────────────────── */}
+      <View style={styles.actionGrid}>
+        <Pressable
+          accessibilityRole="button"
+          style={styles.actionCard}
+          onPress={() => router.push('/sharing/share-qr' as never)}
+        >
+          <View style={[styles.actionIcon, { backgroundColor: colors.mist }]}>
+            <Ionicons name="qr-code" size={20} color={colors.brand} />
+          </View>
+          <Text style={styles.actionTitle}>Share with vet</Text>
+          <Text style={styles.actionSub}>Generate a secure QR code</Text>
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          style={styles.actionCard}
+          onPress={() => router.push('/reminders/reminders' as never)}
+        >
+          <View style={[styles.actionIcon, { backgroundColor: '#EBF6FF' }]}>
+            <Ionicons name="notifications" size={20} color="#2D8EC8" />
+          </View>
+          <Text style={styles.actionTitle}>Reminders</Text>
+          <Text style={styles.actionSub}>Care schedule and alerts</Text>
+        </Pressable>
       </View>
     </Screen>
   );
@@ -352,12 +366,14 @@ const styles = StyleSheet.create({
   recordDue: { color: colors.accent, fontSize: 12, fontWeight: '800', marginTop: 2 },
   badge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: radius.pill, alignSelf: 'flex-start' },
   badgeText: { fontSize: 10, fontWeight: '900', letterSpacing: 0.4 },
-  shareBox: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: colors.mist, padding: 14, borderRadius: radius.md, borderWidth: 1, borderColor: colors.softBrand },
-  shareTitle: { color: colors.ink, fontSize: 14, fontWeight: '900' },
-  shareCopy: { color: colors.muted, fontSize: 12, marginTop: 2 },
   comingSoon: { backgroundColor: colors.brand, paddingHorizontal: 8, paddingVertical: 4, borderRadius: radius.pill },
   comingSoonText: { color: '#fff', fontSize: 9, fontWeight: '900', letterSpacing: 0.5 },
   timelineLink: { flexDirection: 'row', alignItems: 'center', gap: 7, justifyContent: 'center', paddingVertical: 10, backgroundColor: colors.mist, borderRadius: radius.md },
   timelineLinkText: { color: colors.brand, fontSize: 13, fontWeight: '900' },
   docsBanner: { backgroundColor: colors.surface, borderRadius: radius.md, padding: 13, flexDirection: 'row', alignItems: 'center', gap: 11, borderWidth: 1, borderColor: colors.line },
+  actionGrid: { flexDirection: 'row', gap: 10 },
+  actionCard: { flex: 1, backgroundColor: colors.surface, borderRadius: radius.lg, padding: 14, gap: 7, borderWidth: 1, borderColor: colors.line, alignItems: 'flex-start' },
+  actionIcon: { width: 44, height: 44, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
+  actionTitle: { color: colors.ink, fontSize: 14, fontWeight: '900' },
+  actionSub: { color: colors.muted, fontSize: 11, lineHeight: 15 },
 });

@@ -20,6 +20,18 @@ export type {
 } from './health';
 export { VACCINE_TYPES, buildTimeline, DOC_TYPES, DOC_TYPE_LABELS } from './health';
 
+// ── Sharing + Reminder types ──────────────────────────────────
+export type {
+  AccessGrant,
+  ShareCategory,
+  GrantDuration,
+  GrantStatus,
+  Reminder,
+  ReminderType,
+  ReminderStatus,
+} from './sharing';
+export { SHARE_CATEGORIES } from './sharing';
+
 // ── Roles ────────────────────────────────────────────────────
 
 export type AppRole = 'owner' | 'professional' | 'clinic_operator' | 'admin';

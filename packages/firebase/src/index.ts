@@ -89,3 +89,23 @@ export {
   subscribeToDocuments,
   archiveDocument,
 } from './storage';
+
+// ── Re-exports from sharing ───────────────────────────────────
+
+export {
+  createAccessGrant,
+  subscribeToGrants,
+  revokeGrant,
+} from './sharing';
+
+// ── Re-exports from reminders ─────────────────────────────────
+
+export type { CreateReminderInput } from './reminders';
+export {
+  requestNotificationPermissions,
+  createReminder,
+  subscribeToReminders,
+  completeReminder,
+  skipReminder,
+  cancelReminder,
+} from './reminders';

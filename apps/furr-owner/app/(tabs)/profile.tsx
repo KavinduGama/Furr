@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { colors, radius } from '@furr/ui';
 import { Screen } from '@/src/components/screen';
@@ -6,10 +7,10 @@ import { useAuth } from '@/src/context/auth';
 import { formatPhoneDisplay } from '@furr/core';
 
 const options = [
-  ['Account details', 'person-circle'],
-  ['Notifications', 'notifications'],
-  ['Privacy and sharing', 'lock-closed'],
-  ['Help centre', 'help-circle'],
+  { label: 'Account details', icon: 'person-circle', route: null },
+  { label: 'Notifications', icon: 'notifications', route: '/reminders/reminders' },
+  { label: 'Privacy and sharing', icon: 'lock-closed', route: '/sharing/manage-access' },
+  { label: 'Help centre', icon: 'help-circle', route: null },
 ] as const;
 
 export default function ProfileScreen() {
@@ -43,14 +44,15 @@ export default function ProfileScreen() {
 
       <Text style={styles.section}>PREFERENCES</Text>
       <View style={styles.optionGroup}>
-        {options.map(([label, icon], index) => (
+        {options.map(({ label, icon, route }, index) => (
           <Pressable
             accessibilityRole="button"
             key={label}
             style={[styles.item, index !== options.length - 1 && styles.itemBorder]}
+            onPress={() => route && router.push(route as never)}
           >
             <View style={styles.itemIcon}>
-              <Ionicons name={icon} size={18} color={colors.brand} />
+              <Ionicons name={icon as never} size={18} color={colors.brand} />
             </View>
             <Text style={styles.label}>{label}</Text>
             <Ionicons name="chevron-forward" size={18} color="#A3ADB0" />
