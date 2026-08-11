@@ -269,3 +269,4 @@ export const demoRecords: HealthRecord[] = [
     updatedAt: '2026-08-07T09:00:00Z',
   },
 ];
+export * from './vet';

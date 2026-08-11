@@ -144,3 +144,16 @@ export async function archivePet(ownerUid: string, petId: string): Promise<void>
 export async function restorePet(ownerUid: string, petId: string): Promise<void> {
   return updatePet(ownerUid, petId, { status: 'active' });
 }
+
+/**
+ * Get a specific pet.
+ */
+export async function getPet(ownerUid: string, petId: string): Promise<Pet | null> {
+  if (IS_DEV_BYPASS) {
+    return devPets.find((p) => p.ownerUid === ownerUid && p.id === petId) || null;
+  }
+  const { getFirestore, doc, getDoc } = await import('firebase/firestore');
+  const snap = await getDoc(doc(getFirestore(), petsPath(ownerUid), petId));
+  if (!snap.exists()) return null;
+  return snap.data() as Pet;
+}

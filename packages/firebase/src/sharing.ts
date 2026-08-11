@@ -120,3 +120,53 @@ export async function revokeGrant(ownerUid: string, grantId: string): Promise<vo
     updatedAt: serverTimestamp(),
   });
 }
+
+// ─────────────────────────────────────────────────────────────
+//  Vet Portal: Redeem grant (PRO-002)
+// ─────────────────────────────────────────────────────────────
+
+export async function redeemGrant(code: string, vetUid: string): Promise<AccessGrant> {
+  const now = new Date().toISOString();
+  if (IS_DEV_BYPASS) {
+    const grantIndex = devGrants.findIndex(
+      (g) => g.redemptionCode === code && g.status === 'active' && g.codeExpiresAt > now && !g.redeemedAt
+    );
+    if (grantIndex === -1) throw new Error('Invalid or expired code');
+    
+    // In real app, we calculate expiry based on duration enum
+    const durationMs = 24 * 60 * 60 * 1000; // Mock 24h
+    const accessExpiresAt = new Date(Date.now() + durationMs).toISOString();
+    
+    const redeemedGrant: AccessGrant = {
+      ...devGrants[grantIndex],
+      redeemedAt: now,
+      redeemedByUid: vetUid,
+      accessExpiresAt,
+      updatedAt: now,
+    };
+    devGrants[grantIndex] = redeemedGrant;
+    return redeemedGrant;
+  }
+  
+  // Real Firestore logic would use a Cloud Function because we need to query by code across all users,
+  // or use a root collection for `redemptionCodes` -> point to owner grant.
+  // For MVP, we will rely on Dev-Bypass.
+  throw new Error('Not implemented for real Firestore yet (requires Cloud Functions)');
+}
+
+export async function getVetActiveGrants(vetUid: string): Promise<AccessGrant[]> {
+  const now = new Date().toISOString();
+  if (IS_DEV_BYPASS) {
+    return devGrants.filter(
+      (g) => g.redeemedByUid === vetUid && g.status === 'active' && g.accessExpiresAt && g.accessExpiresAt > now
+    );
+  }
+  return [];
+}
+
+export async function getGrant(grantId: string): Promise<AccessGrant | null> {
+  if (IS_DEV_BYPASS) {
+    return devGrants.find((g) => g.id === grantId) || null;
+  }
+  return null; // For MVP, dev bypass only
+}

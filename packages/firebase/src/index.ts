@@ -113,3 +113,6 @@ export {
   skipReminder,
   cancelReminder,
 } from './reminders';
+export * from './vet';
+export * from './sharing';
+export { getPet } from './pets';
