@@ -1,12 +1,5 @@
-export type RoutineTask = {
-  id: string;
-  petId: string;
-  ownerUid: string;
-  title: string;
-  time: string;
-  isCompleted: boolean;
-  createdAt: string;
-};
+import type { RoutineTask } from '@furr/core';
+export type { RoutineTask };
 
 export function subscribeToRoutines(ownerUid: string, onUpdate: (tasks: RoutineTask[]) => void) {
   let unsubscribe: (() => void) | undefined;

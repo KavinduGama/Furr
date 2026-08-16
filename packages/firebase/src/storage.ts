@@ -100,6 +100,13 @@ export async function uploadDocument(
   // ── Real upload ────────────────────────────────────────────────
   const path = storagePath(ownerUid, petId, id, ext);
 
+  // Validate URI scheme — only allow local file/content URIs from camera/picker
+  const allowedSchemes = ['file://', 'content://', 'ph://', 'asset-library://'];
+  const uriLower = input.uri.toLowerCase();
+  if (!allowedSchemes.some((s) => uriLower.startsWith(s))) {
+    throw new Error(`Invalid file URI scheme. Only local file URIs from camera or image picker are allowed.`);
+  }
+
   // Get file blob from local URI
   const blob = await fetch(input.uri).then((r) => r.blob());
 

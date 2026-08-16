@@ -207,12 +207,17 @@ export function buildTimeline(
   observations: HealthObservation[],
   documents: PetDocument[] = [],
 ): TimelineItem[] {
+  const safeSlice = (s: string | undefined | null): string => {
+    if (!s || s.length < 10) return s || '1970-01-01';
+    return s.slice(0, 10);
+  };
+
   const items: TimelineItem[] = [
     ...vaccinations.map((r) => ({ kind: 'vaccination' as const, date: r.administeredOn, record: r })),
-    ...medications.map((m) => ({ kind: 'medication' as const, date: m.startAt.slice(0, 10), plan: m })),
+    ...medications.map((m) => ({ kind: 'medication' as const, date: safeSlice(m.startAt), plan: m })),
     ...weights.map((w) => ({ kind: 'weight' as const, date: w.measuredOn, entry: w })),
     ...observations.map((o) => ({ kind: 'observation' as const, date: o.observedOn, observation: o })),
-    ...documents.map((d) => ({ kind: 'document' as const, date: d.createdAt.slice(0, 10), document: d })),
+    ...documents.map((d) => ({ kind: 'document' as const, date: safeSlice(d.createdAt), document: d })),
   ];
   return items.sort((a, b) => b.date.localeCompare(a.date));
 }

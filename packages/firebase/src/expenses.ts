@@ -1,16 +1,5 @@
-export type ExpenseCategory = 'Vet' | 'Food' | 'Grooming' | 'Toys' | 'Other';
-
-export type Expense = {
-  id: string;
-  petId: string;
-  ownerUid: string;
-  amount: number;
-  category: ExpenseCategory;
-  date: string;
-  note?: string;
-  receiptImageUri?: string;
-  createdAt: string;
-};
+import type { ExpenseCategory, Expense } from '@furr/core';
+export type { ExpenseCategory, Expense };
 
 export function subscribeToExpenses(ownerUid: string, onUpdate: (expenses: Expense[]) => void) {
   let unsubscribe: (() => void) | undefined;

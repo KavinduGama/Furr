@@ -82,6 +82,9 @@ export default function AddMedicationScreen() {
       const h = parseInt(intervalHours, 10);
       if (isNaN(h) || h < 1 || h > 168) e.intervalHours = 'Enter a number between 1 and 168.';
     }
+    if (freqKind === 'weekly' && weeklyDays.length === 0) {
+      e.doseInstruction = 'Please select at least one day of the week.';
+    }
     setErrors(e);
     return Object.keys(e).length === 0;
   };

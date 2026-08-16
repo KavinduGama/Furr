@@ -34,6 +34,14 @@ export default function HostMeetupScreen() {
       return;
     }
 
+    const meetupDate = new Date(date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (isNaN(meetupDate.getTime()) || meetupDate < today) {
+      Alert.alert('Invalid Date', 'Meetup date cannot be in the past.');
+      return;
+    }
+
     setIsSubmitting(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 

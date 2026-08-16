@@ -20,7 +20,7 @@ function GrantRow({ grant }: { grant: AccessGrant }) {
       <span className="pet-kind">{pet.species}</span>
       <div className="record-copy">
         <strong>{pet.name}</strong>
-        <span>{pet.breed || 'Mixed breed'} · access ends {new Date(grant.grantExpiresAt ?? '').toLocaleString()}</span>
+        <span>{pet.breed || 'Mixed breed'} · access ends {grant.grantExpiresAt ? new Date(grant.grantExpiresAt).toLocaleString() : 'No expiry set'}</span>
       </div>
       <Link className="button button-secondary" href={`/pets/${grant.ownerUid}/${grant.petId}?grantId=${grant.id}`}>
         Open record

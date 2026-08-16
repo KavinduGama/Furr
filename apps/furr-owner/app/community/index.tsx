@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, TextInput } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable, TextInput, Alert } from 'react-native';
 import { router, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
@@ -296,7 +296,7 @@ export default function CommunityHubScreen() {
                   <Pressable
                     onPress={() => {
                       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                      alert(`Playdate invitation sent to ${playmate.ownerName}!`);
+                      Alert.alert('Playdate Requested!', `Playdate invitation sent to ${playmate.ownerName}!`);
                     }}
                     style={styles.requestPlaydateBtn}
                   >

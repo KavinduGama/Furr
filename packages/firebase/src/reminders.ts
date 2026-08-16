@@ -142,13 +142,21 @@ export function subscribeToReminders(
     onUpdate(devReminders.filter((r) => r.petId === petId));
     return () => {};
   }
+  let unsubscribe: (() => void) | undefined;
+  let active = true;
+
   void (async () => {
     const { getFirestore, collection, query, orderBy, onSnapshot } = await import('firebase/firestore');
     const db = getFirestore();
     const q = query(collection(db, remPath(ownerUid, petId)), orderBy('scheduledAt', 'desc'));
-    return onSnapshot(q, (snap) => { onUpdate(snap.docs.map((d) => d.data() as Reminder)); });
+    unsubscribe = onSnapshot(q, (snap) => { onUpdate(snap.docs.map((d) => d.data() as Reminder)); });
+    if (!active && unsubscribe) unsubscribe();
   })();
-  return () => {};
+
+  return () => {
+    active = false;
+    if (unsubscribe) unsubscribe();
+  };
 }
 
 // ─────────────────────────────────────────────────────────────

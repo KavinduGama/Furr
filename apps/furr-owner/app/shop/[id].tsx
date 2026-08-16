@@ -28,7 +28,13 @@ export default function ProductDetailScreen() {
     ? Math.round(((product.originalPrice! - product.price) / product.originalPrice!) * 100)
     : 0;
 
+  const isOutOfStock = product.stock <= 0;
+
   const handleAddToCart = () => {
+    if (isOutOfStock) {
+      Alert.alert('Out of Stock', 'Sorry, this product is currently out of stock.');
+      return;
+    }
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     addToCart(product, quantity);
     setAdded(true);
@@ -165,11 +171,12 @@ export default function ProductDetailScreen() {
 
         <Pressable
           onPress={handleAddToCart}
-          style={[styles.actionBtn, added && styles.actionBtnSuccess]}
+          disabled={isOutOfStock}
+          style={[styles.actionBtn, isOutOfStock && { backgroundColor: '#9E9E9E' }, added && styles.actionBtnSuccess]}
         >
-          <Ionicons name={added ? 'checkmark' : 'bag-add'} size={20} color="#FFF" />
+          <Ionicons name={isOutOfStock ? 'alert-circle' : added ? 'checkmark' : 'bag-add'} size={20} color="#FFF" />
           <Text style={styles.actionBtnText}>
-            {added ? 'Added to Cart!' : `Add Rs ${(product.price * quantity).toLocaleString()}`}
+            {isOutOfStock ? 'Out of Stock' : added ? 'Added to Cart!' : `Add Rs ${(product.price * quantity).toLocaleString()}`}
           </Text>
         </Pressable>
       </View>

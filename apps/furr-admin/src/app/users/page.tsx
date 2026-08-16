@@ -3,18 +3,18 @@
 import { useState } from 'react';
 
 const MOCK_USERS = [
-  { id: 'usr_81920', phone: '+94771234567', role: 'owner', status: 'ACTIVE', lastLogin: '2026-08-10T19:00:00Z', petsCount: 2 },
+  { id: 'usr_81920', phone: '+94000000001', role: 'owner', status: 'ACTIVE', lastLogin: '2026-08-10T19:00:00Z', petsCount: 2 },
   { id: 'usr_11929', email: 'dr.smith@example.com', role: 'vet', status: 'ACTIVE', lastLogin: '2026-08-09T11:00:00Z' },
-  { id: 'usr_55912', phone: '+94719876543', role: 'owner', status: 'SUSPENDED', lastLogin: '2026-07-20T10:00:00Z', petsCount: 1 },
+  { id: 'usr_55912', phone: '+94000000002', role: 'owner', status: 'SUSPENDED', lastLogin: '2026-07-20T10:00:00Z', petsCount: 1 },
 ];
 
 export default function UserSupportDesk() {
   const [searchTerm, setSearchTerm] = useState('');
   
   const filteredUsers = MOCK_USERS.filter(u => 
-    u.id.includes(searchTerm) || 
+    u.id.toLowerCase().includes(searchTerm.toLowerCase()) || 
     (u.phone && u.phone.includes(searchTerm)) || 
-    (u.email && u.email.includes(searchTerm))
+    (u.email && u.email.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   return (
@@ -32,10 +32,17 @@ export default function UserSupportDesk() {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="flex-1 bg-stone-50 border border-stone-200 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#62A48C]"
+            aria-label="Search users"
           />
-          <button className="bg-[#02202B] hover:bg-[#033345] text-white font-bold px-6 py-2 rounded-lg transition-colors">
-            Search
-          </button>
+          {searchTerm && (
+            <button 
+              onClick={() => setSearchTerm('')} 
+              className="bg-stone-200 hover:bg-stone-300 text-stone-700 font-bold px-4 py-2 rounded-lg transition-colors text-sm"
+              type="button"
+            >
+              Clear
+            </button>
+          )}
         </div>
 
         <table className="w-full text-left border-collapse">

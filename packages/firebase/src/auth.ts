@@ -40,7 +40,10 @@ export function getRecaptchaVerifier(containerId = 'recaptcha-container'): Recap
       // reCAPTCHA solved — OTP will be sent
     },
     'expired-callback': () => {
-      // Reset verifier so it's recreated on next attempt
+      // Reset verifier — call .clear() to remove the DOM element, then null the reference
+      if (recaptchaVerifier) {
+        recaptchaVerifier.clear();
+      }
       recaptchaVerifier = null;
     },
   });

@@ -33,7 +33,7 @@ export function FamilyProvider({ children }: { children: React.ReactNode }) {
   const [insurancePolicies, setInsurancePolicies] = useState<InsurancePolicy[]>(INITIAL_INSURANCE_POLICIES);
   const [insuranceClaims, setInsuranceClaims] = useState<InsuranceClaim[]>(INITIAL_CLAIMS);
 
-  const petId = selectedPet?.id || 'max';
+  const petId = selectedPet?.id || '';
 
   useEffect(() => {
     const unsubFam = subscribeToFamilyMembers(petId, (members) => setFamilyMembers(members));

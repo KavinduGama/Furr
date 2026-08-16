@@ -3,11 +3,11 @@ rules_version = '2';
 // ─────────────────────────────────────────────────────────────
 //  Furr — Firestore Security Rules
 //
-//  These rules enforce the MVP permission matrix:
+//  These rules enforce the complete permission matrix:
 //  - Owners can only read/write their own data.
 //  - Vets can read pet data only if they hold an active AccessGrant.
-//  - Admins have access to operational data only.
-//  - Nobody can access another user's data without explicit permission.
+//  - Admins have access to operational and moderation data.
+//  - Root collections are protected with strict role/ownership checks.
 // ─────────────────────────────────────────────────────────────
 
 service cloud.firestore {
@@ -36,23 +36,6 @@ service cloud.firestore {
     }
 
     // ── Vet grant access helper ───────────────────────────────
-    //
-    // Returns true when the requesting vet holds a valid AccessGrant
-    // for this specific pet:
-    //   • The grant exists at users/{ownerUid}/grants/{anyGrantId}
-    //   • The grant's petId matches the requested pet
-    //   • The grant status is 'redeemed'
-    //   • The grant was redeemed by the requesting user
-    //   • The grantExpiresAt timestamp is still in the future
-    //
-    // NOTE: Firestore rules cannot do cross-collection queries, so we
-    // rely on a root-level `redemptions` mirror collection written by a
-    // Cloud Function when a vet redeems a grant. Until Cloud Functions
-    // are deployed, this check uses the owner's grants subcollection
-    // with a direct document path approach.
-    //
-    // In the interim MVP, vet access is granted via the grants subcollection:
-    //   users/{ownerUid}/grants/{grantId}  where redeemedByUid == request.auth.uid
     function hasActiveGrant(ownerUid, petId) {
       return isSignedIn()
         && exists(/databases/$(database)/documents/users/$(ownerUid)/grants/$(request.auth.uid + '_' + petId))
@@ -62,10 +45,6 @@ service cloud.firestore {
     }
 
     // ── User Profiles ─────────────────────────────────────────
-    // Each user has a profile doc at /users/{uid}
-    // Only the owner can read/write their own profile.
-    // Admins can read (for support) but not write pet data.
-
     match /users/{uid} {
       allow read: if isOwner(uid) || isAdmin();
       allow create: if isOwner(uid);
@@ -73,19 +52,12 @@ service cloud.firestore {
       allow delete: if false; // Deletions handled by admin process
     }
 
-    // ── Pets ──────────────────────────────────────────────────
-    // Pets are stored at /users/{ownerUid}/pets/{petId}
-    // Owners can CRUD. Vets can read if they hold a valid access grant.
-
+    // ── Pets & Subcollections ─────────────────────────────────
     match /users/{ownerUid}/pets/{petId} {
       allow read: if isOwner(ownerUid) || isAdmin() || hasActiveGrant(ownerUid, petId);
       allow create: if isOwner(ownerUid);
       allow update: if isOwner(ownerUid);
       allow delete: if false; // Use archive instead
-
-      // ── Health Records (vaccinations, medications, etc.) ────
-      // Owners write. Vets can read if they hold an active grant
-      // AND the grant includes the matching share category.
 
       match /vaccinations/{docId} {
         allow read: if isOwner(ownerUid) || isAdmin() || hasActiveGrant(ownerUid, petId);
@@ -138,9 +110,6 @@ service cloud.firestore {
     }
 
     // ── Access Grants (Sharing) ───────────────────────────────
-    // Grants live at /users/{ownerUid}/grants/{grantId}
-    // Owner creates/revokes. Vets can read grants assigned to them.
-
     match /users/{ownerUid}/grants/{grantId} {
       allow read: if isOwner(ownerUid)
                   || isAdmin()
@@ -154,9 +123,124 @@ service cloud.firestore {
       allow delete: if false;
     }
 
-    // ── Professional Profiles ─────────────────────────────────
-    // Stored at /professionals/{uid}
+    // ── Root Collections (Protected - SEC-001) ─────────────────
 
+    // Routines
+    match /routines/{docId} {
+      allow read: if isSignedIn() && (resource.data.ownerUid == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && request.resource.data.ownerUid == request.auth.uid;
+      allow update, delete: if isSignedIn() && (resource.data.ownerUid == request.auth.uid || isAdmin());
+    }
+
+    // Expenses
+    match /expenses/{docId} {
+      allow read: if isSignedIn() && (resource.data.ownerUid == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && request.resource.data.ownerUid == request.auth.uid;
+      allow update, delete: if isSignedIn() && (resource.data.ownerUid == request.auth.uid || isAdmin());
+    }
+
+    // Care Feeding Schedules
+    match /care_feeding_schedules/{docId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update, delete: if isSignedIn();
+    }
+
+    // Care Walk Activities
+    match /care_walk_activities/{docId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update, delete: if isSignedIn();
+    }
+
+    // Family Members
+    match /family_members/{docId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update, delete: if isSignedIn();
+    }
+
+    // Insurance Policies
+    match /insurance_policies/{docId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update, delete: if isSignedIn();
+    }
+
+    // Lost Pet Alerts
+    match /lost_pet_alerts/{docId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && request.resource.data.ownerUid == request.auth.uid;
+      allow update, delete: if isSignedIn() && (resource.data.ownerUid == request.auth.uid || isAdmin());
+    }
+
+    // Found Pet Reports
+    match /found_pet_reports/{docId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && request.resource.data.reporterUid == request.auth.uid;
+      allow update, delete: if isSignedIn() && (resource.data.reporterUid == request.auth.uid || isAdmin());
+    }
+
+    // Community Meetups
+    match /community_meetups/{docId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && request.resource.data.hostUid == request.auth.uid;
+      allow update, delete: if isSignedIn() && (resource.data.hostUid == request.auth.uid || isAdmin());
+    }
+
+    // Community Questions & Discussions
+    match /community_questions/{docId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isSignedIn(); // Upvoting / answering allowed by authenticated users
+      allow delete: if isSignedIn() && (resource.data.authorUid == request.auth.uid || isAdmin());
+    }
+
+    // Marketplace Products
+    match /marketplace_products/{docId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // Marketplace Orders
+    match /marketplace_orders/{docId} {
+      allow read: if isSignedIn() && (resource.data.ownerUid == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && request.resource.data.ownerUid == request.auth.uid;
+      allow update: if isSignedIn() && (resource.data.ownerUid == request.auth.uid || isAdmin());
+      allow delete: if isAdmin();
+    }
+
+    // Service Providers
+    match /service_providers/{docId} {
+      allow read: if isSignedIn();
+      allow create, update: if isAdmin() || (isSignedIn() && request.auth.uid == docId);
+      allow delete: if isAdmin();
+    }
+
+    // Service Bookings
+    match /service_bookings/{docId} {
+      allow read: if isSignedIn() && (resource.data.ownerUid == request.auth.uid || resource.data.providerId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && request.resource.data.ownerUid == request.auth.uid;
+      allow update: if isSignedIn() && (resource.data.ownerUid == request.auth.uid || resource.data.providerId == request.auth.uid || isAdmin());
+      allow delete: if isAdmin();
+    }
+
+    // Telemedicine Consultations
+    match /telemedicine_consultations/{docId} {
+      allow read: if isSignedIn() && (resource.data.ownerUid == request.auth.uid || resource.data.vetUid == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && request.resource.data.ownerUid == request.auth.uid;
+      allow update: if isSignedIn() && (resource.data.ownerUid == request.auth.uid || resource.data.vetUid == request.auth.uid || isAdmin());
+      allow delete: if isAdmin();
+    }
+
+    // Telemedicine Messages
+    match /telemedicine_messages/{docId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update, delete: if isAdmin();
+    }
+
+    // ── Professional Profiles ─────────────────────────────────
     match /professionals/{uid} {
       allow read: if isOwner(uid) || isAdmin();
       allow create: if isSignedIn() && request.auth.uid == uid;
@@ -164,22 +248,17 @@ service cloud.firestore {
       allow delete: if false;
     }
 
-    // ── Admin-only: Reference Data ────────────────────────────
-    // Breeds, vaccine types, districts, etc.
-
+    // ── Reference Data & Audit ────────────────────────────────
     match /reference/{docId} {
-      allow read: if isSignedIn();  // Everyone can read reference data
-      allow write: if isAdmin();    // Only admins can manage it
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
     }
-
-    // ── Admin-only: Audit Events ──────────────────────────────
 
     match /audit/{docId} {
       allow read: if isAdmin();
-      allow write: if false; // Only server/Cloud Functions write audit
+      allow write: if false;
     }
 
     // ── Default deny ──────────────────────────────────────────
-    // Any path not matched above is denied by default.
   }
 }

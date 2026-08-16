@@ -82,8 +82,11 @@ export default function AddPetScreen() {
     const e: Record<string, string> = {};
     if (birthDate) {
       const d = new Date(birthDate);
+      const minDate = new Date();
+      minDate.setFullYear(minDate.getFullYear() - 35);
       if (isNaN(d.getTime())) e.birthDate = 'Enter a valid date (YYYY-MM-DD).';
       else if (d > new Date()) e.birthDate = 'Birth date cannot be in the future.';
+      else if (d < minDate) e.birthDate = 'Birth date cannot be more than 35 years in the past.';
     }
     setErrors(e);
     return Object.keys(e).length === 0;

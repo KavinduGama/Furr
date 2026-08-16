@@ -57,8 +57,11 @@ export default function AddVaccinationScreen() {
       e.administeredOn = 'Administration date is required.';
     } else {
       const d = new Date(administeredOn);
+      const minDate = new Date();
+      minDate.setFullYear(minDate.getFullYear() - 30);
       if (isNaN(d.getTime())) e.administeredOn = 'Enter a valid date (YYYY-MM-DD).';
       else if (d > new Date()) e.administeredOn = 'Administration date cannot be in the future.';
+      else if (d < minDate) e.administeredOn = 'Date cannot be more than 30 years in the past.';
     }
     if (nextDueOn) {
       const due = new Date(nextDueOn);

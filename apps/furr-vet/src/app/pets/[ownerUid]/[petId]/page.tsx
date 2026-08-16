@@ -33,10 +33,16 @@ export default function PetViewPage({ params }: { params: Promise<{ ownerUid: st
     async function loadRecord() {
       try {
         const nextGrant = await getGrant(requestedGrantId);
-        if (!nextGrant || nextGrant.status !== 'redeemed' || nextGrant.redeemedByUid !== viewerUid) {
-          throw new Error('This shared record is no longer available.');
+        if (
+          !nextGrant ||
+          nextGrant.status !== 'redeemed' ||
+          nextGrant.redeemedByUid !== viewerUid ||
+          nextGrant.ownerUid !== ownerUid ||
+          nextGrant.petId !== petId
+        ) {
+          throw new Error('This shared record is no longer available or URL parameters do not match grant.');
         }
-        if (nextGrant.grantExpiresAt && nextGrant.grantExpiresAt < new Date().toISOString()) {
+        if (nextGrant.grantExpiresAt && new Date(nextGrant.grantExpiresAt).getTime() < Date.now()) {
           throw new Error('This owner access grant has expired.');
         }
         const nextPet = await getPet(ownerUid, petId);

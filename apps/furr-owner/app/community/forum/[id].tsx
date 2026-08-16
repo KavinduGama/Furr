@@ -22,8 +22,18 @@ export default function QuestionDetailScreen() {
   const { firebaseUser } = useAuth();
   const [replyText, setReplyText] = useState('');
 
-  const question = questions.find((q) => q.id === id) || questions[0];
+  const question = questions.find((q) => q.id === id);
   const userUid = firebaseUser?.uid || 'demo-uid';
+
+  if (!question) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.canvas }}>
+        <Stack.Screen options={{ headerShown: true, title: 'Question Not Found', headerStyle: { backgroundColor: colors.canvas }, headerShadowVisible: false }} />
+        <Text style={{ fontSize: 16, fontWeight: '800', color: colors.ink }}>Question not found</Text>
+        <Text style={{ fontSize: 13, color: colors.muted, marginTop: 4 }}>This thread may have been removed.</Text>
+      </View>
+    );
+  }
 
   const handlePostAnswer = async () => {
     if (!replyText.trim()) return;

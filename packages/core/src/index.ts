@@ -277,4 +277,6 @@ export * from './community';
 export * from './care';
 export * from './lostfound';
 export * from './family';
+export * from './routines';
+export * from './expenses';
 

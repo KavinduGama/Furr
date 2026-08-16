@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, Stack } from 'expo-router';
-import { useMemo } from 'react';
-import { Pressable, StyleSheet, Text, View, ScrollView, Image } from 'react-native';
+import { useMemo, useState, useCallback } from 'react';
+import { Pressable, StyleSheet, Text, View, ScrollView, Image, RefreshControl } from 'react-native';
 import { PieChart } from 'react-native-gifted-charts';
 import { Swipeable } from 'react-native-gesture-handler';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
@@ -40,6 +40,12 @@ export default function ExpensesScreen() {
     }));
   }, [petExpenses]);
 
+  const [refreshing, setRefreshing] = useState(false);
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    setTimeout(() => setRefreshing(false), 800);
+  }, []);
+
   return (
     <View style={styles.screen}>
       <Stack.Screen
@@ -60,7 +66,11 @@ export default function ExpensesScreen() {
           )
         }}
       />
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.brand} />}
+      >
         
         {petExpenses.length === 0 ? (
           <View style={styles.emptyState}>

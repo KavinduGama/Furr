@@ -1,0 +1,56 @@
+rules_version = '2';
+
+// ─────────────────────────────────────────────────────────────
+//  Furr — Firebase Storage Security Rules
+// ─────────────────────────────────────────────────────────────
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    function isValidSize() {
+      return request.resource.size < 10 * 1024 * 1024; // 10 MB max
+    }
+
+    function isImageOrDoc() {
+      return request.resource.contentType.matches('image/.*')
+          || request.resource.contentType.matches('application/pdf');
+    }
+
+    // User pet documents & medical records
+    match /users/{uid}/pets/{petId}/documents/{fileName} {
+      allow read: if isSignedIn();
+      allow write: if isOwner(uid) && isValidSize() && isImageOrDoc();
+    }
+
+    // Pet profile avatars
+    match /users/{uid}/pets/{petId}/avatars/{fileName} {
+      allow read: if isSignedIn();
+      allow write: if isOwner(uid) && isValidSize() && request.resource.contentType.matches('image/.*');
+    }
+
+    // Lost & Found alert photos
+    match /lostfound/{fileName} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && isValidSize() && request.resource.contentType.matches('image/.*');
+    }
+
+    // Marketplace product images
+    match /products/{fileName} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && request.auth.token.admin == true;
+    }
+
+    // Default deny
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

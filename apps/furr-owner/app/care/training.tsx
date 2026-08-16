@@ -22,10 +22,16 @@ export default function TrainingLogScreen() {
   const petName = selectedPet?.name || 'Pet';
 
   const handleSave = async () => {
+    const parsedDuration = parseInt(duration, 10);
+    if (isNaN(parsedDuration) || parsedDuration <= 0 || parsedDuration > 300) {
+      Alert.alert('Invalid Duration', 'Please enter a training duration between 1 and 300 minutes.');
+      return;
+    }
+
     setIsSubmitting(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
-    await recordTraining(selectedCommand, successRate, parseInt(duration) || 15, notes);
+    await recordTraining(selectedCommand, successRate, parsedDuration, notes);
 
     setIsSubmitting(false);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);

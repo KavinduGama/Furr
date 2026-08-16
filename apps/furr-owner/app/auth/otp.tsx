@@ -92,7 +92,8 @@ export default function OtpScreen() {
     if (code.length === 6 && !loading) {
       handleVerify();
     }
-  }, [code]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [code, loading]);
 
 
   return (

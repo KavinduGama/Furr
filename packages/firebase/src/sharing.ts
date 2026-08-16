@@ -16,10 +16,12 @@ function devId(): string {
   return `dev-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 }
 
-/** Generate a random 6-char alphanumeric code (uppercase) */
+/** Generate a random 6-char alphanumeric code (uppercase, cryptographically secure) */
 function generateCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no 0/O/1/I ambiguity
-  return Array.from({ length: 6 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+  const randomBytes = new Uint8Array(6);
+  crypto.getRandomValues(randomBytes);
+  return Array.from(randomBytes, (byte) => chars[byte % chars.length]).join('');
 }
 
 const grantPath = (uid: string) => `users/${uid}/grants`;

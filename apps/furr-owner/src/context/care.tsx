@@ -34,7 +34,7 @@ export function CareProvider({ children }: { children: React.ReactNode }) {
   const [walks, setWalks] = useState<WalkActivity[]>(INITIAL_WALKS);
   const [trainingLogs, setTrainingLogs] = useState<TrainingLog[]>(INITIAL_TRAINING_LOGS);
 
-  const petId = selectedPet?.id || 'max';
+  const petId = selectedPet?.id || '';
 
   useEffect(() => {
     const unsubFeed = subscribeToFeedingSchedules(petId, (list) => setFeedingSchedules(list));

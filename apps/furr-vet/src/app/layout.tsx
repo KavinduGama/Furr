@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/context/auth";
@@ -28,11 +29,11 @@ export default function RootLayout({
                 <span className="font-black text-xl tracking-tight text-[#10242D]">FURR <span className="text-[#66757C] font-medium">VET</span></span>
               </div>
               <nav className="flex gap-4 items-center">
-                <a href="/" className="text-sm font-semibold text-[#10242D] hover:text-[#006B78]">Workspace</a>
-                <a href="/consults" className="text-sm font-semibold text-[#006B78] bg-[#E6F4F5] px-3 py-1.5 rounded-lg flex items-center gap-1.5">
+                <Link href="/" className="text-sm font-semibold text-[#10242D] hover:text-[#006B78]">Workspace</Link>
+                <Link href="/consults" className="text-sm font-semibold text-[#006B78] bg-[#E6F4F5] px-3 py-1.5 rounded-lg flex items-center gap-1.5">
                   <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
                   Telehealth Desk
-                </a>
+                </Link>
                 <span className="hidden sm:block text-sm font-medium text-[#66757C]">Owner-controlled access</span>
               </nav>
             </div>
