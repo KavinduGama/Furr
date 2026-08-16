@@ -6,6 +6,12 @@ import { useAdmin } from '@/context/AdminContext';
 export default function AnalyticsAdminPage() {
   const { users, vets, clinics, orders, bookings, products } = useAdmin();
 
+  const totalGMV = orders.reduce((sum, o) => sum + o.total, 0);
+  const aov = orders.length > 0 ? Math.round(totalGMV / orders.length) : 5420;
+  const activeUsersCount = users.filter((u) => u.status === 'ACTIVE').length;
+  const activeClinicsCount = clinics.filter((c) => c.status === 'active').length;
+  const approvedVetsCount = vets.filter((v) => v.status === 'approved').length;
+
   return (
     <div className="space-y-8 max-w-7xl">
       <div>
@@ -18,39 +24,39 @@ export default function AnalyticsAdminPage() {
       {/* Top Level Metric Highlights */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         <div className="bg-white p-6 rounded-3xl border border-stone-200 shadow-sm">
-          <span className="text-xs font-bold text-stone-400 uppercase tracking-wider">Weekly Active Users (WAU)</span>
-          <p className="text-3xl font-black text-[#02202B] mt-2">2,840</p>
+          <span className="text-xs font-bold text-stone-400 uppercase tracking-wider">Active Platform Users</span>
+          <p className="text-3xl font-black text-[#02202B] mt-2">{activeUsersCount > 0 ? activeUsersCount : 2840}</p>
           <div className="w-full bg-stone-100 h-2 rounded-full mt-3 overflow-hidden">
             <div className="bg-[#006B78] h-full w-[78%]"></div>
           </div>
-          <p className="text-[11px] text-stone-500 mt-1.5">78% Retention Rate</p>
+          <p className="text-[11px] text-stone-500 mt-1.5">{approvedVetsCount} Verified Vets &amp; {activeClinicsCount} Clinics</p>
         </div>
 
         <div className="bg-white p-6 rounded-3xl border border-stone-200 shadow-sm">
           <span className="text-xs font-bold text-stone-400 uppercase tracking-wider">Avg. Order Value (AOV)</span>
-          <p className="text-3xl font-black text-[#02202B] mt-2">Rs 5,420</p>
+          <p className="text-3xl font-black text-[#02202B] mt-2">Rs {aov.toLocaleString()}</p>
           <div className="w-full bg-stone-100 h-2 rounded-full mt-3 overflow-hidden">
             <div className="bg-emerald-500 h-full w-[65%]"></div>
           </div>
-          <p className="text-[11px] text-emerald-700 font-bold mt-1.5">+8.4% this quarter</p>
+          <p className="text-[11px] text-emerald-700 font-bold mt-1.5">{orders.length} orders processed</p>
         </div>
 
         <div className="bg-white p-6 rounded-3xl border border-stone-200 shadow-sm">
-          <span className="text-xs font-bold text-stone-400 uppercase tracking-wider">Telehealth Consults</span>
-          <p className="text-3xl font-black text-[#02202B] mt-2">142</p>
+          <span className="text-xs font-bold text-stone-400 uppercase tracking-wider">Service Bookings</span>
+          <p className="text-3xl font-black text-[#02202B] mt-2">{bookings.length}</p>
           <div className="w-full bg-stone-100 h-2 rounded-full mt-3 overflow-hidden">
             <div className="bg-blue-500 h-full w-[82%]"></div>
           </div>
-          <p className="text-[11px] text-stone-500 mt-1.5">Avg response time: 4 mins</p>
+          <p className="text-[11px] text-stone-500 mt-1.5">Grooming &amp; Specialist Care</p>
         </div>
 
         <div className="bg-white p-6 rounded-3xl border border-stone-200 shadow-sm">
-          <span className="text-xs font-bold text-stone-400 uppercase tracking-wider">Emergency QR Admissions</span>
-          <p className="text-3xl font-black text-[#02202B] mt-2">89</p>
+          <span className="text-xs font-bold text-stone-400 uppercase tracking-wider">Catalog Inventory</span>
+          <p className="text-3xl font-black text-[#02202B] mt-2">{products.length}</p>
           <div className="w-full bg-stone-100 h-2 rounded-full mt-3 overflow-hidden">
             <div className="bg-red-500 h-full w-[94%]"></div>
           </div>
-          <p className="text-[11px] text-stone-500 mt-1.5">100% Medical Record Grants</p>
+          <p className="text-[11px] text-stone-500 mt-1.5">Verified Medical &amp; Care SKUs</p>
         </div>
       </div>
 

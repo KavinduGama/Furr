@@ -7,8 +7,7 @@
 // ─────────────────────────────────────────────────────────────
 
 import type { AccessGrant, ShareCategory, GrantDuration } from '@furr/core';
-
-const IS_DEV_BYPASS = typeof process !== 'undefined' && !process.env?.EXPO_PUBLIC_FIREBASE_API_KEY && !process.env?.NEXT_PUBLIC_FIREBASE_API_KEY;
+import { IS_DEV_BYPASS } from './env';
 
 let devGrants: AccessGrant[] = [
   {

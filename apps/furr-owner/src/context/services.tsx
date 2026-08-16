@@ -96,23 +96,32 @@ export function ServicesProvider({ children }: { children: React.ReactNode }) {
     async (
       bookingData: Omit<ServiceBooking, 'id' | 'createdAt' | 'status' | 'ownerUid'>
     ): Promise<ServiceBooking | null> => {
-      const ownerUid = firebaseUser?.uid || 'guest-user';
-      const booking = await firebaseCreateBooking({
-        ...bookingData,
-        ownerUid,
-      });
+      try {
+        const ownerUid = firebaseUser?.uid || 'guest-user';
+        const booking = await firebaseCreateBooking({
+          ...bookingData,
+          ownerUid,
+        });
 
-      setBookings((prev) => [booking, ...prev]);
-      return booking;
+        setBookings((prev) => [booking, ...prev]);
+        return booking;
+      } catch (err) {
+        console.error('[furr/services] Failed to book service:', err);
+        return null;
+      }
     },
     [firebaseUser]
   );
 
   const cancelBooking = useCallback(async (bookingId: string) => {
-    await firebaseCancelBooking(bookingId);
-    setBookings((prev) =>
-      prev.map((b) => (b.id === bookingId ? { ...b, status: 'cancelled' } : b))
-    );
+    try {
+      await firebaseCancelBooking(bookingId);
+      setBookings((prev) =>
+        prev.map((b) => (b.id === bookingId ? { ...b, status: 'cancelled' } : b))
+      );
+    } catch (err) {
+      console.error('[furr/services] Failed to cancel booking:', err);
+    }
   }, []);
 
   const value = useMemo(

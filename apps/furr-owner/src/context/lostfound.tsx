@@ -41,17 +41,22 @@ export function LostFoundProvider({ children }: { children: React.ReactNode }) {
     async (
       data: Omit<LostPetAlert, 'id' | 'createdAt' | 'status' | 'ownerUid' | 'ownerName'>
     ): Promise<LostPetAlert | null> => {
-      const ownerUid = firebaseUser?.uid || 'demo-uid';
-      const ownerName = profile?.displayName || 'Pet Parent';
+      try {
+        const ownerUid = firebaseUser?.uid || profile?.uid || 'demo-uid';
+        const ownerName = profile?.displayName || 'Pet Parent';
 
-      const alert = await firebaseCreateLostAlert({
-        ...data,
-        ownerUid,
-        ownerName,
-      });
+        const alert = await firebaseCreateLostAlert({
+          ...data,
+          ownerUid,
+          ownerName,
+        });
 
-      setLostAlerts((prev) => [alert, ...prev]);
-      return alert;
+        setLostAlerts((prev) => [alert, ...prev]);
+        return alert;
+      } catch (err) {
+        console.error('[furr/lostfound] Failed to broadcast lost alert:', err);
+        return null;
+      }
     },
     [firebaseUser, profile]
   );
@@ -60,17 +65,22 @@ export function LostFoundProvider({ children }: { children: React.ReactNode }) {
     async (
       data: Omit<FoundPetReport, 'id' | 'createdAt' | 'reporterUid' | 'reporterName' | 'status'>
     ): Promise<FoundPetReport | null> => {
-      const reporterUid = firebaseUser?.uid || 'demo-uid';
-      const reporterName = profile?.displayName || 'Good Samaritan';
+      try {
+        const reporterUid = firebaseUser?.uid || profile?.uid || 'demo-uid';
+        const reporterName = profile?.displayName || 'Good Samaritan';
 
-      const report = await firebaseCreateFoundReport({
-        ...data,
-        reporterUid,
-        reporterName,
-      });
+        const report = await firebaseCreateFoundReport({
+          ...data,
+          reporterUid,
+          reporterName,
+        });
 
-      setFoundReports((prev) => [report, ...prev]);
-      return report;
+        setFoundReports((prev) => [report, ...prev]);
+        return report;
+      } catch (err) {
+        console.error('[furr/lostfound] Failed to report found pet:', err);
+        return null;
+      }
     },
     [firebaseUser, profile]
   );

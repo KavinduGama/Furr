@@ -47,48 +47,61 @@ export function CareProvider({ children }: { children: React.ReactNode }) {
 
   const logMeal = useCallback(
     async (mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack', amount: string) => {
-      const fedByName = profile?.displayName || 'Owner';
-      const fedByUid = firebaseUser?.uid || 'demo-uid';
-      const newLog = await firebaseLogMeal({
-        petId,
-        mealType,
-        fedByUid,
-        fedByName,
-        amount,
-      });
-      setFeedingLogs((prev) => [newLog, ...prev]);
+      try {
+        const fedByName = profile?.displayName || 'Owner';
+        const fedByUid = firebaseUser?.uid || profile?.uid || 'demo-uid';
+        const newLog = await firebaseLogMeal({
+          petId,
+          mealType,
+          fedByUid,
+          fedByName,
+          amount,
+        });
+        setFeedingLogs((prev) => [newLog, ...prev]);
+      } catch (err) {
+        console.error('[furr/care] Failed to log meal:', err);
+      }
     },
     [petId, profile, firebaseUser]
   );
 
   const recordWalk = useCallback(
     async (data: Omit<WalkActivity, 'id' | 'petId' | 'ownerUid'>) => {
-      const ownerUid = firebaseUser?.uid || 'demo-uid';
-      const newWalk = await firebaseSaveWalk({
-        ...data,
-        petId,
-        ownerUid,
-      });
-      setWalks((prev) => [newWalk, ...prev]);
-      return newWalk;
+      try {
+        const ownerUid = firebaseUser?.uid || profile?.uid || 'demo-uid';
+        const newWalk = await firebaseSaveWalk({
+          ...data,
+          petId,
+          ownerUid,
+        });
+        setWalks((prev) => [newWalk, ...prev]);
+        return newWalk;
+      } catch (err) {
+        console.error('[furr/care] Failed to record walk:', err);
+        throw err;
+      }
     },
-    [petId, firebaseUser]
+    [petId, profile, firebaseUser]
   );
 
   const recordTraining = useCallback(
     async (commandName: string, successRatePercent: number, durationMinutes: number, notes?: string) => {
-      const ownerUid = firebaseUser?.uid || 'demo-uid';
-      const newLog = await firebaseSaveTraining({
-        petId,
-        ownerUid,
-        commandName,
-        successRatePercent,
-        durationMinutes,
-        notes,
-      });
-      setTrainingLogs((prev) => [newLog, ...prev]);
+      try {
+        const ownerUid = firebaseUser?.uid || profile?.uid || 'demo-uid';
+        const newLog = await firebaseSaveTraining({
+          petId,
+          ownerUid,
+          commandName,
+          successRatePercent,
+          durationMinutes,
+          notes,
+        });
+        setTrainingLogs((prev) => [newLog, ...prev]);
+      } catch (err) {
+        console.error('[furr/care] Failed to record training:', err);
+      }
     },
-    [petId, firebaseUser]
+    [petId, profile, firebaseUser]
   );
 
   const value = useMemo(

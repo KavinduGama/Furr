@@ -7,10 +7,7 @@
 // ─────────────────────────────────────────────────────────────
 
 import type { Pet } from '@furr/core';
-
-// ── Dev-bypass in-memory store ────────────────────────────────
-
-const IS_DEV_BYPASS = typeof process !== 'undefined' && !process.env?.EXPO_PUBLIC_FIREBASE_API_KEY && !process.env?.NEXT_PUBLIC_FIREBASE_API_KEY;
+import { IS_DEV_BYPASS } from './env';
 
 let devPets: Pet[] = [];
 const devSubscribers = new Set<{ ownerUid: string; onUpdate: (pets: Pet[]) => void }>();

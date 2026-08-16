@@ -46,38 +46,47 @@ export function CommunityProvider({ children }: { children: React.ReactNode }) {
 
   const toggleRsvp = useCallback(
     async (meetupId: string) => {
-      const userUid = firebaseUser?.uid || 'demo-uid';
-      setMeetups((prev) =>
-        prev.map((m) => {
-          if (m.id !== meetupId) return m;
-          const isAttending = m.rsvpUids.includes(userUid);
-          const newUids = isAttending
-            ? m.rsvpUids.filter((uid) => uid !== userUid)
-            : [...m.rsvpUids, userUid];
-          return {
-            ...m,
-            rsvpUids: newUids,
-            rsvpCount: newUids.length,
-          };
-        })
-      );
+      try {
+        const userUid = firebaseUser?.uid || profile?.uid || 'demo-uid';
+        setMeetups((prev) =>
+          prev.map((m) => {
+            if (m.id !== meetupId) return m;
+            const isAttending = m.rsvpUids.includes(userUid);
+            const newUids = isAttending
+              ? m.rsvpUids.filter((uid) => uid !== userUid)
+              : [...m.rsvpUids, userUid];
+            return {
+              ...m,
+              rsvpUids: newUids,
+              rsvpCount: newUids.length,
+            };
+          })
+        );
+      } catch (err) {
+        console.error('[furr/community] Failed to toggle RSVP:', err);
+      }
     },
-    [firebaseUser]
+    [firebaseUser, profile]
   );
 
   const hostMeetup = useCallback(
     async (
       data: Omit<PetMeetup, 'id' | 'createdAt' | 'rsvpCount' | 'rsvpUids' | 'creatorUid' | 'creatorName'>
     ): Promise<PetMeetup | null> => {
-      const creatorUid = firebaseUser?.uid || 'demo-uid';
-      const creatorName = profile?.displayName || 'Pet Lover';
-      const newMeetup = await firebaseCreateMeetup({
-        ...data,
-        creatorUid,
-        creatorName,
-      });
-      setMeetups((prev) => [newMeetup, ...prev]);
-      return newMeetup;
+      try {
+        const creatorUid = firebaseUser?.uid || profile?.uid || 'demo-uid';
+        const creatorName = profile?.displayName || 'Pet Lover';
+        const newMeetup = await firebaseCreateMeetup({
+          ...data,
+          creatorUid,
+          creatorName,
+        });
+        setMeetups((prev) => [newMeetup, ...prev]);
+        return newMeetup;
+      } catch (err) {
+        console.error('[furr/community] Failed to host meetup:', err);
+        return null;
+      }
     },
     [firebaseUser, profile]
   );
@@ -86,48 +95,57 @@ export function CommunityProvider({ children }: { children: React.ReactNode }) {
     async (
       data: Omit<ForumQuestion, 'id' | 'createdAt' | 'answersCount' | 'answers' | 'authorUid' | 'authorName'>
     ): Promise<ForumQuestion | null> => {
-      const authorUid = firebaseUser?.uid || 'demo-uid';
-      const authorName = profile?.displayName || 'Pet Parent';
-      const newQuestion = await firebaseCreateQuestion({
-        ...data,
-        authorUid,
-        authorName,
-      });
-      setQuestions((prev) => [newQuestion, ...prev]);
-      return newQuestion;
+      try {
+        const authorUid = firebaseUser?.uid || profile?.uid || 'demo-uid';
+        const authorName = profile?.displayName || 'Pet Parent';
+        const newQuestion = await firebaseCreateQuestion({
+          ...data,
+          authorUid,
+          authorName,
+        });
+        setQuestions((prev) => [newQuestion, ...prev]);
+        return newQuestion;
+      } catch (err) {
+        console.error('[furr/community] Failed to post question:', err);
+        return null;
+      }
     },
     [firebaseUser, profile]
   );
 
   const postAnswer = useCallback(
     async (questionId: string, text: string) => {
-      const authorUid = firebaseUser?.uid || 'demo-uid';
-      const authorName = profile?.displayName || 'Fellow Owner';
-      const answer = await firebaseAddAnswer(questionId, {
-        authorUid,
-        authorName,
-        authorRole: 'owner',
-        text,
-      });
+      try {
+        const authorUid = firebaseUser?.uid || profile?.uid || 'demo-uid';
+        const authorName = profile?.displayName || 'Fellow Owner';
+        const answer = await firebaseAddAnswer(questionId, {
+          authorUid,
+          authorName,
+          authorRole: 'owner',
+          text,
+        });
 
-      setQuestions((prev) =>
-        prev.map((q) =>
-          q.id === questionId
-            ? {
-                ...q,
-                answersCount: q.answersCount + 1,
-                answers: [...q.answers, answer],
-              }
-            : q
-        )
-      );
+        setQuestions((prev) =>
+          prev.map((q) =>
+            q.id === questionId
+              ? {
+                  ...q,
+                  answersCount: q.answersCount + 1,
+                  answers: [...q.answers, answer],
+                }
+              : q
+          )
+        );
+      } catch (err) {
+        console.error('[furr/community] Failed to post answer:', err);
+      }
     },
     [firebaseUser, profile]
   );
 
   const upvoteAnswer = useCallback(
     (questionId: string, answerId: string) => {
-      const userUid = firebaseUser?.uid || 'demo-uid';
+      const userUid = firebaseUser?.uid || profile?.uid || 'demo-uid';
       setQuestions((prev) =>
         prev.map((q) => {
           if (q.id !== questionId) return q;

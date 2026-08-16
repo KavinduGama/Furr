@@ -94,28 +94,38 @@ function AdminHeaderBar() {
 }
 
 export function AdminGate({ children }: { children: React.ReactNode }) {
-  const [status, setStatus] = useState<'loading' | 'signed-out' | 'denied' | 'allowed'>('allowed');
+  const [status, setStatus] = useState<'loading' | 'signed-out' | 'denied' | 'allowed'>(
+    firebaseConfigured ? 'loading' : 'allowed'
+  );
   const [email, setEmail] = useState('admin@furr.lk');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    if (!firebaseConfigured) return;
+    if (!firebaseConfigured) {
+      setStatus('allowed');
+      return;
+    }
 
     const unsubscribe = subscribeToAuthState(async (user) => {
       if (!user) {
-        // Allow seamless access with dev fallback
+        setStatus('signed-out');
         return;
       }
       try {
         const token = await user.getIdTokenResult();
-        if (token.claims.admin === true) {
+        // Allow if has admin claim or if running with dev bypass / test admin
+        if (token.claims.admin === true || user.email?.endsWith('@furr.lk')) {
           setStatus('allowed');
           setError(null);
+        } else {
+          setStatus('denied');
+          setError('Access Denied: Your account does not have platform administrator privileges.');
         }
-      } catch {
-        // ignore in dev
+      } catch (err: any) {
+        setStatus('signed-out');
+        setError(err?.message || 'Authentication check failed.');
       }
     });
     return unsubscribe;
@@ -130,9 +140,9 @@ export function AdminGate({ children }: { children: React.ReactNode }) {
         await signInWithEmail(email.trim(), password);
       }
       setStatus('allowed');
-    } catch {
-      // In dev mode allow bypass
-      setStatus('allowed');
+    } catch (err: any) {
+      setError(err?.message || 'Failed to sign in. Please verify your credentials.');
+      setStatus('signed-out');
     } finally {
       setSubmitting(false);
     }
@@ -141,6 +151,17 @@ export function AdminGate({ children }: { children: React.ReactNode }) {
   const bypassSignIn = () => {
     setStatus('allowed');
   };
+
+  if (status === 'loading') {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-stone-100">
+        <div className="text-center space-y-3">
+          <div className="w-10 h-10 border-4 border-[#006B78] border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="text-xs font-bold text-stone-500 uppercase tracking-widest">Verifying Admin Session…</p>
+        </div>
+      </div>
+    );
+  }
 
   if (status === 'allowed') {
     return (

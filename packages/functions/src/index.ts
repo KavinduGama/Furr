@@ -9,9 +9,17 @@ if (!admin.apps.length) {
 export { onLostPetAlertCreated } from './triggers/lostPetAmberAlert';
 export { onTelehealthMessageSent } from './triggers/telehealthChatNotification';
 export { onOrderStatusUpdated } from './triggers/orderDispatchedNotification';
+export { onVetApplicationStatusChanged } from './triggers/verifyVetProfessional';
+export { onFoundPetReportCreated } from './triggers/matchLostPets';
+export { onCommunityQuestionCreated } from './triggers/moderateContent';
 
 // ── Callables ─────────────────────────────────────────────────
 export { redeemGrantCode } from './callable/redeemGrantCode';
+export { writeAdminAuditLog } from './callable/auditLogWriter';
+export { deleteUserAccount } from './callable/userDeletion';
+export { generateHealthReport } from './callable/generateHealthReport';
 
-// ── Maintenance ───────────────────────────────────────────────
+// ── Maintenance Schedulers ────────────────────────────────────
 export { cleanupExpiredGrants } from './maintenance/grantExpiryCleaner';
+export { sendReminderNotifications } from './maintenance/sendReminderNotifications';
+export { cleanupStalePushTokens } from './maintenance/expoPushTokenCleanup';

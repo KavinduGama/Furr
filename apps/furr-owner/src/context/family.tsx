@@ -51,14 +51,19 @@ export function FamilyProvider({ children }: { children: React.ReactNode }) {
     async (
       data: Omit<FamilyMember, 'id' | 'petId' | 'ownerUid' | 'joinedAt'>
     ): Promise<FamilyMember | null> => {
-      const ownerUid = firebaseUser?.uid || 'demo-uid';
-      const member = await firebaseInviteMember({
-        ...data,
-        petId,
-        ownerUid,
-      });
-      setFamilyMembers((prev) => [...prev, member]);
-      return member;
+      try {
+        const ownerUid = firebaseUser?.uid || 'demo-uid';
+        const member = await firebaseInviteMember({
+          ...data,
+          petId,
+          ownerUid,
+        });
+        setFamilyMembers((prev) => [...prev, member]);
+        return member;
+      } catch (err) {
+        console.error('[furr/family] Failed to invite member:', err);
+        return null;
+      }
     },
     [petId, firebaseUser]
   );
@@ -67,12 +72,17 @@ export function FamilyProvider({ children }: { children: React.ReactNode }) {
     async (
       data: Omit<InsuranceClaim, 'id' | 'petId' | 'status' | 'submittedAt'>
     ): Promise<InsuranceClaim | null> => {
-      const claim = await firebaseSubmitClaim({
-        ...data,
-        petId,
-      });
-      setInsuranceClaims((prev) => [claim, ...prev]);
-      return claim;
+      try {
+        const claim = await firebaseSubmitClaim({
+          ...data,
+          petId,
+        });
+        setInsuranceClaims((prev) => [claim, ...prev]);
+        return claim;
+      } catch (err) {
+        console.error('[furr/family] Failed to submit claim:', err);
+        return null;
+      }
     },
     [petId]
   );

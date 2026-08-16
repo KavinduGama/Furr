@@ -8,8 +8,7 @@
 
 import type { Reminder, ReminderType } from '@furr/core';
 import { Platform } from 'react-native';
-
-const IS_DEV_BYPASS = typeof process !== 'undefined' && !process.env?.EXPO_PUBLIC_FIREBASE_API_KEY && !process.env?.NEXT_PUBLIC_FIREBASE_API_KEY;
+import { IS_DEV_BYPASS } from './env';
 
 let devReminders: Reminder[] = [];
 const ANDROID_CHANNEL_ID = 'pet-care';
@@ -118,6 +117,7 @@ export async function createReminder(
 
   if (IS_DEV_BYPASS) {
     devReminders = [reminder, ...devReminders];
+    notifyDevReminderSubscribers(ownerUid, petId);
     return reminder;
   }
 
@@ -133,29 +133,55 @@ export async function createReminder(
 //  Subscribe to reminders
 // ─────────────────────────────────────────────────────────────
 
+const devReminderSubscribers = new Set<{ ownerUid: string; petId: string; onUpdate: (reminders: Reminder[]) => void }>();
+
+function notifyDevReminderSubscribers(ownerUid: string, petId: string): void {
+  for (const sub of devReminderSubscribers) {
+    if (sub.ownerUid === ownerUid && sub.petId === petId) {
+      sub.onUpdate(devReminders.filter((r) => r.petId === petId));
+    }
+  }
+}
+
 export function subscribeToReminders(
   ownerUid: string,
   petId: string,
   onUpdate: (reminders: Reminder[]) => void,
 ): () => void {
   if (IS_DEV_BYPASS) {
+    const subscriber = { ownerUid, petId, onUpdate };
+    devReminderSubscribers.add(subscriber);
     onUpdate(devReminders.filter((r) => r.petId === petId));
-    return () => {};
+    return () => {
+      devReminderSubscribers.delete(subscriber);
+    };
   }
   let unsubscribe: (() => void) | undefined;
   let active = true;
 
   void (async () => {
-    const { getFirestore, collection, query, orderBy, onSnapshot } = await import('firebase/firestore');
-    const db = getFirestore();
-    const q = query(collection(db, remPath(ownerUid, petId)), orderBy('scheduledAt', 'desc'));
-    unsubscribe = onSnapshot(q, (snap) => { onUpdate(snap.docs.map((d) => d.data() as Reminder)); });
-    if (!active && unsubscribe) unsubscribe();
+    try {
+      const { getFirestore, collection, query, orderBy, onSnapshot } = await import('firebase/firestore');
+      const db = getFirestore();
+      const q = query(collection(db, remPath(ownerUid, petId)), orderBy('scheduledAt', 'desc'));
+      const unsub = onSnapshot(q, (snap) => {
+        if (active) onUpdate(snap.docs.map((d) => d.data() as Reminder));
+      });
+      if (!active) {
+        unsub();
+      } else {
+        unsubscribe = unsub;
+      }
+    } catch (err) {
+      console.warn('[furr/firebase] Reminder listener error:', err);
+    }
   })();
 
   return () => {
     active = false;
-    if (unsubscribe) unsubscribe();
+    if (unsubscribe) {
+      unsubscribe();
+    }
   };
 }
 

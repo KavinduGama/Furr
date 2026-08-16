@@ -138,6 +138,8 @@ export * from './community';
 export * from './care';
 export * from './lostfound';
 export * from './family';
+export * from './admin';
+export * from './clinic';
 export * from './env';
 
 // Reminders live at `@furr/firebase/src/reminders` because they import the

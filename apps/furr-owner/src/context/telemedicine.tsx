@@ -56,18 +56,23 @@ export function TelemedicineProvider({ children }: { children: React.ReactNode }
     async (
       data: Omit<Consultation, 'id' | 'createdAt' | 'status' | 'ownerUid' | 'ownerName'>
     ): Promise<Consultation | null> => {
-      const ownerUid = firebaseUser?.uid || 'demo-uid';
-      const ownerName = profile?.displayName || 'Pet Owner';
+      try {
+        const ownerUid = firebaseUser?.uid || profile?.uid || 'demo-uid';
+        const ownerName = profile?.displayName || 'Pet Owner';
 
-      const consult = await firebaseCreateConsultation({
-        ...data,
-        ownerUid,
-        ownerName,
-      });
+        const consult = await firebaseCreateConsultation({
+          ...data,
+          ownerUid,
+          ownerName,
+        });
 
-      setConsultations((prev) => [consult, ...prev]);
-      setActiveConsultation(consult);
-      return consult;
+        setConsultations((prev) => [consult, ...prev]);
+        setActiveConsultation(consult);
+        return consult;
+      } catch (err) {
+        console.error('[furr/telemedicine] Failed to request consultation:', err);
+        return null;
+      }
     },
     [firebaseUser, profile]
   );
@@ -76,19 +81,23 @@ export function TelemedicineProvider({ children }: { children: React.ReactNode }
     async (consultationId: string, text: string, imageUrls?: string[]) => {
       if (!text.trim() && (!imageUrls || imageUrls.length === 0)) return;
 
-      const senderUid = firebaseUser?.uid || 'demo-uid';
-      const senderName = profile?.displayName || 'You';
+      try {
+        const senderUid = firebaseUser?.uid || profile?.uid || 'demo-uid';
+        const senderName = profile?.displayName || 'You';
 
-      const msg = await firebaseSendMessage({
-        consultationId,
-        senderUid,
-        senderRole: 'owner',
-        senderName,
-        text,
-        imageUrls,
-      });
+        const msg = await firebaseSendMessage({
+          consultationId,
+          senderUid,
+          senderRole: 'owner',
+          senderName,
+          text,
+          imageUrls,
+        });
 
-      setMessages((prev) => [...prev, msg]);
+        setMessages((prev) => [...prev, msg]);
+      } catch (err) {
+        console.error('[furr/telemedicine] Failed to send message:', err);
+      }
     },
     [firebaseUser, profile]
   );

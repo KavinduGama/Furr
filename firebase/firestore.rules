@@ -268,15 +268,52 @@ service cloud.firestore {
       allow delete: if false;
     }
 
-    // ── Reference Data & Audit ────────────────────────────────
-    match /reference/{docId} {
+    // ── Admin Operational Collections ────────────────────────
+    match /admin_vet_applications/{docId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update, delete: if isAdmin();
+    }
+
+    match /admin_clinics/{docId} {
       allow read: if isSignedIn();
       allow write: if isAdmin();
     }
 
-    match /audit/{docId} {
+    match /admin_disputes/{docId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /admin_audit_logs/{docId} {
       allow read: if isAdmin();
-      allow write: if false;
+      allow create: if isAdmin();
+      allow update, delete: if false; // Immutable audit log
+    }
+
+    match /admin_payouts/{docId} {
+      allow read, write: if isAdmin();
+    }
+
+    // ── Clinic Operations Collections ─────────────────────────
+    match /clinic_queue/{docId} {
+      allow read, write: if isSignedIn();
+    }
+
+    match /clinic_appointments/{docId} {
+      allow read, write: if isSignedIn();
+    }
+
+    match /clinic_staff/{docId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin() || hasRole('clinic_admin');
+    }
+
+    // ── Found Pet Community Reports ───────────────────────────
+    match /found_pet_reports/{docId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && (resource.data.reporterUid == request.auth.uid || isAdmin());
+      allow delete: if isAdmin();
     }
 
     // ── Default deny ──────────────────────────────────────────

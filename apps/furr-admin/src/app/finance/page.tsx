@@ -17,10 +17,25 @@ export default function FinanceAdminPage() {
 
   const handleExportCSV = () => {
     setDownloading(true);
-    setTimeout(() => {
+    try {
+      const headers = ['Payout Ref,Vendor Name,Type,Period,Gross Volume,Platform Fee,Net Payout,Bank Account,Status'];
+      const rows = payouts.map(
+        (p) =>
+          `"${p.id}","${p.vendorName}","${p.type}","${p.period}",${p.grossRevenue},${p.platformFee},${p.netPayout},"${p.bankAccount}","${p.status}"`
+      );
+      const csvContent = 'data:text/csv;charset=utf-8,' + [headers, ...rows].join('\n');
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement('a');
+      link.setAttribute('href', encodedUri);
+      link.setAttribute('download', `furr_finance_settlements_${new Date().toISOString().slice(0, 10)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (err) {
+      console.error('Failed to export CSV:', err);
+    } finally {
       setDownloading(false);
-      alert('Financial settlement report (Aug 2026) exported successfully.');
-    }, 800);
+    }
   };
 
   return (

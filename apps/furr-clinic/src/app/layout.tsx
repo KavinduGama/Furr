@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { ClinicNavLink } from "@/components/ClinicNavLink";
+import { ClinicProvider } from "@/context/ClinicContext";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -80,7 +81,7 @@ export default function RootLayout({
             </div>
           </header>
           <div className="clinic-content">
-            {children}
+            <ClinicProvider>{children}</ClinicProvider>
           </div>
         </main>
       </body>

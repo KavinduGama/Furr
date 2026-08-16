@@ -1,6 +1,5 @@
 import type { ProfessionalProfile, ProfessionalStatus } from '@furr/core';
-
-const IS_DEV_BYPASS = typeof process !== 'undefined' && !process.env?.NEXT_PUBLIC_FIREBASE_API_KEY && !process.env?.EXPO_PUBLIC_FIREBASE_API_KEY;
+import { IS_DEV_BYPASS } from './env';
 
 // Mock Dev Data
 export const devProfessionalProfiles: ProfessionalProfile[] = [

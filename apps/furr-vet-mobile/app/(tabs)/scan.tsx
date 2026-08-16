@@ -63,7 +63,7 @@ export default function VetScanScreen() {
             value={code}
             onChangeText={(t) => setCode(t.toUpperCase())}
             autoCapitalize="characters"
-            maxLength={10}
+            maxLength={6}
           />
 
           {error && <Text style={styles.errorText}>{error}</Text>}

@@ -9,6 +9,7 @@ export interface ExpoPushMessage {
   sound?: 'default' | null;
   badge?: number;
   channelId?: string;
+  priority?: 'default' | 'normal' | 'high';
 }
 
 export async function sendExpoPushNotifications(messages: ExpoPushMessage[]): Promise<void> {
