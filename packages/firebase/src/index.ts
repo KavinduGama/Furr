@@ -137,6 +137,7 @@ export * from './telemedicine';
 export * from './community';
 export * from './care';
 export * from './lostfound';
+export * from './family';
 
 // Reminders live at `@furr/firebase/src/reminders` because they import the
 // Expo-only notification runtime. Keeping that out of this entry point keeps
