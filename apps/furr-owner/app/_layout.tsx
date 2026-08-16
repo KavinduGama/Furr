@@ -10,6 +10,7 @@ import { HealthProvider } from '@/src/context/health';
 import { SubscriptionProvider } from '@/src/context/subscription';
 import { ExpenseProvider } from '@/src/context/expenses';
 import { RoutineProvider } from '@/src/context/routines';
+import { MarketplaceProvider } from '@/src/context/marketplace';
 import { AuthNavigationGuard } from '@/src/components/AuthNavigationGuard';
 import {
   firebaseOptionsFromEnvironment,
@@ -34,10 +35,12 @@ export default function RootLayout() {
               <HealthProvider>
                 <ExpenseProvider>
                   <RoutineProvider>
-                    <AuthNavigationGuard>
-                      <StatusBar style="dark" />
-                      <Stack screenOptions={{ headerShown: false, animation: 'fade' }} />
-                    </AuthNavigationGuard>
+                    <MarketplaceProvider>
+                      <AuthNavigationGuard>
+                        <StatusBar style="dark" />
+                        <Stack screenOptions={{ headerShown: false, animation: 'fade' }} />
+                      </AuthNavigationGuard>
+                    </MarketplaceProvider>
                   </RoutineProvider>
                 </ExpenseProvider>
               </HealthProvider>

@@ -131,6 +131,7 @@ export {
 
 export * from './routines';
 export * from './expenses';
+export * from './marketplace';
 
 // Reminders live at `@furr/firebase/src/reminders` because they import the
 // Expo-only notification runtime. Keeping that out of this entry point keeps
