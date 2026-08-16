@@ -240,6 +240,26 @@ service cloud.firestore {
       allow update, delete: if isAdmin();
     }
 
+    // ── Clinics & Hospital Registry ──────────────────────────
+    match /clinics/{docId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // ── Veterinarian Registry ─────────────────────────────────
+    match /vets/{docId} {
+      allow read: if isSignedIn();
+      allow create, update: if isAdmin() || (isSignedIn() && request.auth.uid == docId);
+      allow delete: if isAdmin();
+    }
+
+    // ── Disputes & Trust Resolution ───────────────────────────
+    match /disputes/{docId} {
+      allow read: if isSignedIn() && (resource.data.complainantUid == request.auth.uid || isAdmin());
+      allow create: if isSignedIn();
+      allow update, delete: if isAdmin();
+    }
+
     // ── Professional Profiles ─────────────────────────────────
     match /professionals/{uid} {
       allow read: if isOwner(uid) || isAdmin();
