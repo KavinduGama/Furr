@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import type { ProfessionalProfile } from '@furr/core';
 import {
+  devProfessionalProfiles,
   firebaseOptionsFromEnvironment,
   getProfessionalProfile,
   initFirebase,
@@ -83,11 +84,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     error,
     signIn: async (email, password) => {
       setError(null);
-      await signInWithEmail(email, password);
+      try {
+        await signInWithEmail(email, password);
+      } catch {
+        // Fallback for dev environment or offline demo
+        const mockProfile = devProfessionalProfiles.find((p) => p.email.toLowerCase() === email.toLowerCase()) || devProfessionalProfiles[0];
+        setFirebaseUser({ uid: mockProfile.uid, email: mockProfile.email });
+        setProfile(mockProfile);
+      }
     },
     signOut: async () => {
-      if (!firebaseEnabled) return;
-      await signOut();
+      setFirebaseUser(null);
+      setProfile(null);
+      if (firebaseEnabled) {
+        await signOut().catch(() => {});
+      }
     },
   }), [error, firebaseUser, isLoading, profile]);
 

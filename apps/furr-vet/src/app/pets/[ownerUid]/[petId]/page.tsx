@@ -6,6 +6,7 @@ import { useSearchParams } from 'next/navigation';
 import type { AccessGrant, Pet } from '@furr/core';
 import { getGrant, getPet } from '@furr/firebase';
 import { useAuth } from '@/context/auth';
+import { HealthDataViewer } from '@/components/HealthDataViewer';
 
 const categoryNames: Record<AccessGrant['categories'][number], string> = {
   summary: 'Pet summary',
@@ -86,6 +87,8 @@ export default function PetViewPage({ params }: { params: Promise<{ ownerUid: st
         <strong>Clinical notes are not available yet</strong>
         <p>Furr will add a separately reviewed clinical-authoring workflow before professionals can write to an owner’s health record. This prevents notes being created without the correct consent, audit trail, and verification controls.</p>
       </section>
+      
+      <HealthDataViewer ownerUid={ownerUid} petId={petId} categories={grant.categories} />
     </div>
   );
 }

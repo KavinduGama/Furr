@@ -12,10 +12,12 @@ import type {
 
 const IS_DEV_BYPASS = typeof process !== 'undefined' && !process.env?.EXPO_PUBLIC_FIREBASE_API_KEY && !process.env?.NEXT_PUBLIC_FIREBASE_API_KEY;
 
+import { demoRecords } from '@furr/core';
+
 // ── Dev-bypass in-memory stores ───────────────────────────────
 
-let devVaccinations: VaccinationRecord[] = [];
-let devMedications: MedicationPlan[] = [];
+let devVaccinations: VaccinationRecord[] = demoRecords.filter(r => r.category === 'vaccination') as VaccinationRecord[];
+let devMedications: MedicationPlan[] = demoRecords.filter(r => r.category === 'medication') as unknown as MedicationPlan[];
 
 function devId(): string {
   return `dev-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
@@ -184,7 +186,7 @@ export async function deactivateMedication(ownerUid: string, petId: string, medI
 //  Weight
 // ─────────────────────────────────────────────────────────────
 
-let devWeights: WeightEntry[] = [];
+let devWeights: WeightEntry[] = demoRecords.filter(r => r.category === 'weight') as unknown as WeightEntry[];
 const wgtPath = (uid: string, petId: string) => `users/${uid}/pets/${petId}/weights`;
 
 export function subscribeToWeightEntries(

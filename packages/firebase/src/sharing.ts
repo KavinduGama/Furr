@@ -10,7 +10,23 @@ import type { AccessGrant, ShareCategory, GrantDuration } from '@furr/core';
 
 const IS_DEV_BYPASS = typeof process !== 'undefined' && !process.env?.EXPO_PUBLIC_FIREBASE_API_KEY && !process.env?.NEXT_PUBLIC_FIREBASE_API_KEY;
 
-let devGrants: AccessGrant[] = [];
+let devGrants: AccessGrant[] = [
+  {
+    id: 'test-grant-1',
+    petId: 'max',
+    ownerUid: 'demo-uid',
+    redemptionCode: 'TEST12',
+    codeExpiresAt: new Date(Date.now() + 86400000).toISOString(),
+    purpose: 'veterinary_care',
+    categories: ['summary', 'vaccinations', 'medications', 'timeline', 'weight', 'documents'],
+    duration: '24h',
+    grantExpiresAt: new Date(Date.now() + 86400000).toISOString(),
+    status: 'redeemed',
+    redeemedByUid: 'vet_dev_001',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  }
+];
 
 function devId(): string {
   return `dev-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
