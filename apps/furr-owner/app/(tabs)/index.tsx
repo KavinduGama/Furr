@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { colors, radius, space } from '@furr/ui';
 import { Screen } from '@/src/components/screen';
+import { DailyChecklist } from '@/src/components/DailyChecklist';
 import { useAuth } from '@/src/context/auth';
 import { usePets } from '@/src/context/pets';
 
@@ -80,6 +81,9 @@ export default function TodayScreen() {
             </View>
           </View>
         )}
+
+        {/* Daily Checklist */}
+        {hasPets && <DailyChecklist />}
 
         {/* My Pets List (Card) */}
         {!hasPets ? (

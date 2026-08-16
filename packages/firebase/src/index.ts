@@ -129,6 +129,9 @@ export {
 
 // ── Re-exports from reminders ─────────────────────────────────
 
+export * from './routines';
+export * from './expenses';
+
 // Reminders live at `@furr/firebase/src/reminders` because they import the
 // Expo-only notification runtime. Keeping that out of this entry point keeps
 // the shared package safe to import from the Next.js portals.

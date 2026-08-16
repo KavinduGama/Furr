@@ -7,8 +7,9 @@ import {
   View,
   type PressableProps,
 } from 'react-native';
-import { colors, radius } from '../index';
+import { colors, radius } from '../tokens';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
+import * as Haptics from 'expo-haptics';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'text' | 'danger';
 
@@ -46,6 +47,7 @@ export function Button({
       accessibilityLabel={label}
       disabled={isDisabled}
       onPressIn={(e) => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
         scale.value = withSpring(0.96, { damping: 15, stiffness: 200 });
         if (rest.onPressIn) rest.onPressIn(e);
       }}

@@ -1,6 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
 import type { ColorValue } from 'react-native';
+import { StyleSheet } from 'react-native';
+import { BlurView } from 'expo-blur';
 import { colors } from '@furr/ui';
 
 const icon = (name: keyof typeof Ionicons.glyphMap) => ({ color, focused }: { color: ColorValue; focused: boolean }) => (
@@ -17,14 +19,18 @@ export default function TabsLayout() {
       tabBarActiveTintColor: colors.brand,
       tabBarInactiveTintColor: colors.muted,
       tabBarStyle: { 
+        position: 'absolute',
         height: 80, 
         paddingTop: 12, 
         paddingBottom: 24, 
         borderTopColor: colors.line, 
-        borderTopWidth: 1,
-        backgroundColor: colors.surface, 
+        borderTopWidth: StyleSheet.hairlineWidth,
+        backgroundColor: 'rgba(255, 255, 255, 0.6)', 
         elevation: 0 
       },
+      tabBarBackground: () => (
+        <BlurView intensity={80} tint="light" style={StyleSheet.absoluteFill} />
+      ),
       tabBarLabelStyle: { fontWeight: '700', fontSize: 11, marginTop: 4 },
     }}>
       <Tabs.Screen name="index" options={{ title: 'Home', tabBarIcon: icon('home') }} />

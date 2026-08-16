@@ -1,6 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { Pressable, StyleSheet, Text, View, ActivityIndicator, Alert, ScrollView } from 'react-native';
+import { Pressable, StyleSheet, Text, View, ActivityIndicator, Alert, ScrollView, Platform } from 'react-native';
+import { useMemo } from 'react';
+import { LineChart } from 'react-native-gifted-charts';
 import type { VaccinationRecord, MedicationPlan, WeightEntry } from '@furr/core';
 import { colors, radius, space } from '@furr/ui';
 import { useAuth } from '@/src/context/auth';
@@ -61,6 +63,21 @@ export default function CareScreen() {
   }
 
   const petName = selectedPet?.name ?? 'your pet';
+
+  const weightData = useMemo(() => {
+    if (weights.length === 0) return [];
+    // Sort oldest first for the chart
+    const sorted = [...weights].sort((a, b) => new Date(a.measuredOn).getTime() - new Date(b.measuredOn).getTime());
+    return sorted.map(w => {
+      // Normalize to kg for consistent charting if units differ
+      const val = w.unit === 'kg' ? w.value : w.value / 2.205;
+      const dateObj = new Date(w.measuredOn);
+      return {
+        value: parseFloat(val.toFixed(2)),
+        label: `${dateObj.getDate()}/${dateObj.getMonth() + 1}`,
+      };
+    });
+  }, [weights]);
 
   return (
     <View style={styles.screen}>
@@ -260,7 +277,7 @@ export default function CareScreen() {
           <Ionicons name="arrow-forward" size={15} color={colors.brand} />
         </Pressable>
       ) : (
-        <View style={styles.recordCard}>
+        <View style={styles.chartCard}>
           <View style={styles.recordMain}>
             <View style={[styles.recordIcon, { backgroundColor: '#EBF6FF' }]}>
               <Ionicons name="scale" size={17} color="#2D8EC8" />
@@ -284,6 +301,30 @@ export default function CareScreen() {
               <Text style={[styles.badgeText, { color: '#2D8EC8' }]}>View all →</Text>
             </Pressable>
           </View>
+          
+          {Platform.OS !== 'web' && weightData.length > 1 && (
+            <View style={{ marginTop: space.xl, alignItems: 'center', marginHorizontal: -10 }}>
+              <LineChart
+                data={weightData}
+                width={280}
+                height={120}
+                thickness={3}
+                color="#2D8EC8"
+                hideDataPoints
+                hideRules
+                hideYAxisText
+                xAxisColor={colors.line}
+                yAxisColor={colors.line}
+                rulesType="solid"
+                rulesColor={colors.line}
+                xAxisLabelTextStyle={{ color: colors.muted, fontSize: 10, fontWeight: '700' }}
+                curved
+                animateOnDataChange
+                animationDuration={1000}
+                isAnimated
+              />
+            </View>
+          )}
         </View>
       )}
 
@@ -408,6 +449,7 @@ const styles = StyleSheet.create({
   emptyCopy: { color: colors.muted, fontSize: 13, marginTop: 4, lineHeight: 18 },
   
   recordCard: { backgroundColor: colors.surface, borderRadius: radius.xl, padding: 18, shadowColor: colors.ink, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.04, shadowRadius: 12, elevation: 2, marginHorizontal: space.lg },
+  chartCard: { backgroundColor: colors.surface, borderRadius: radius.xl, padding: 18, shadowColor: colors.ink, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.04, shadowRadius: 12, elevation: 2, marginHorizontal: space.lg },
   recordMain: { flexDirection: 'row', alignItems: 'flex-start', gap: 14 },
   recordIcon: { width: 44, height: 44, borderRadius: 16, backgroundColor: colors.mist, alignItems: 'center', justifyContent: 'center' },
   recordTitle: { color: colors.ink, fontSize: 16, fontWeight: '900' },

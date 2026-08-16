@@ -1,10 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, Stack } from 'expo-router';
 import { useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View, Image } from 'react-native';
+import Animated, { useAnimatedRef, useScrollViewOffset, useAnimatedStyle, interpolate, Extrapolation } from 'react-native-reanimated';
 import type { Pet } from '@furr/core';
 import { archivePet } from '@furr/firebase';
-import { colors, radius, space, Button } from '@furr/ui';
+import { colors, radius, space, Button, shadows } from '@furr/ui';
 import { useAuth } from '@/src/context/auth';
 import { usePets } from '@/src/context/pets';
 import { useHealth } from '@/src/context/health';
@@ -14,6 +15,9 @@ function speciesEmoji(pet: Pet) {
   return pet.species === 'cat' ? '🐈' : '🐕';
 }
 
+const HEADER_IMAGE_HEIGHT = 300;
+const maxHero = require('../assets/furr/max-hero-editorial.png');
+
 type TabKey = 'Overview' | 'Records' | 'Growth' | 'More';
 
 export default function PetDetailScreen() {
@@ -22,6 +26,30 @@ export default function PetDetailScreen() {
   const { vaccinations, medications, flags } = useHealth();
   const [archiving, setArchiving] = useState(false);
   const [activeTab, setActiveTab] = useState<TabKey>('Overview');
+
+  const scrollRef = useAnimatedRef<Animated.ScrollView>();
+  const scrollOffset = useScrollViewOffset(scrollRef);
+
+  const headerAnimatedStyle = useAnimatedStyle(() => {
+    return {
+      transform: [
+        {
+          translateY: interpolate(
+            scrollOffset.value,
+            [-HEADER_IMAGE_HEIGHT, 0, HEADER_IMAGE_HEIGHT],
+            [-HEADER_IMAGE_HEIGHT / 2, 0, HEADER_IMAGE_HEIGHT * 0.75]
+          ),
+        },
+        {
+          scale: interpolate(
+            scrollOffset.value,
+            [-HEADER_IMAGE_HEIGHT, 0, HEADER_IMAGE_HEIGHT],
+            [2, 1, 1]
+          ),
+        },
+      ],
+    };
+  });
 
   if (!selectedPet) {
     return (
@@ -93,7 +121,16 @@ export default function PetDetailScreen() {
           ),
         }}
       />
-      <ScrollView style={styles.scroll} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <Animated.ScrollView 
+        ref={scrollRef}
+        style={styles.scroll} 
+        contentContainerStyle={styles.content} 
+        showsVerticalScrollIndicator={false}
+        scrollEventThrottle={16}
+      >
+        <Animated.View style={[styles.headerImageContainer, headerAnimatedStyle]}>
+          <Image source={maxHero} style={styles.headerImage} />
+        </Animated.View>
         
         {/* Profile Header */}
         <View style={styles.profileHeader}>
@@ -252,8 +289,7 @@ export default function PetDetailScreen() {
             )}
           </View>
         )}
-
-      </ScrollView>
+      </Animated.ScrollView>
     </>
   );
 }
@@ -263,15 +299,25 @@ export default function PetDetailScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.canvas },
   scroll: { flex: 1, backgroundColor: colors.canvas },
-  content: { paddingBottom: 48 },
-  headerBtn: { paddingHorizontal: 16 },
-
-  empty: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
+  content: { paddingBottom: space.xxl },
+  empty: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   emptyText: { color: colors.muted, fontSize: 16 },
-  backLink: { color: colors.brand, fontWeight: '800' },
+  backLink: { color: colors.brand, fontSize: 16, marginTop: space.sm, fontWeight: '700' },
+  headerBtn: { padding: 4 },
 
-  profileHeader: { alignItems: 'center', paddingVertical: space.md },
-  avatarWrap: { width: 100, height: 100, borderRadius: 50, backgroundColor: colors.pearl, alignItems: 'center', justifyContent: 'center', marginBottom: space.sm, shadowColor: colors.ink, shadowOpacity: 0.1, shadowRadius: 15, shadowOffset: {width: 0, height: 8}, elevation: 4 },
+  headerImageContainer: {
+    height: HEADER_IMAGE_HEIGHT,
+    width: '100%',
+    overflow: 'hidden',
+  },
+  headerImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+
+  profileHeader: { alignItems: 'center', paddingHorizontal: space.lg, marginTop: -50 },
+  avatarWrap: { width: 100, height: 100, borderRadius: 50, backgroundColor: colors.pearl, alignItems: 'center', justifyContent: 'center', marginBottom: space.sm,  ...shadows.md },
   avatarEmoji: { fontSize: 48 },
   name: { color: colors.ink, fontSize: 28, fontWeight: '900', letterSpacing: -0.5 },
   meta: { color: colors.muted, fontSize: 15, marginTop: 4 },

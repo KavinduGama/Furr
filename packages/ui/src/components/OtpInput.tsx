@@ -6,7 +6,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { colors, radius } from '../index';
+import { colors, radius } from '../tokens';
 
 export interface OtpInputProps {
   length?: number;

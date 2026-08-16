@@ -4,7 +4,7 @@
 
 // ── Tokens ───────────────────────────────────────────────────
 
-export { colors, radius, space } from './tokens';
+export { colors, radius, space, shadows } from './tokens';
 
 // ── Component exports ─────────────────────────────────────────
 

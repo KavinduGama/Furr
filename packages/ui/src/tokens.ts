@@ -20,3 +20,11 @@ export const colors = {
 
 export const radius = { sm: 12, md: 16, lg: 24, xl: 32, pill: 999 } as const;
 export const space = { xs: 8, sm: 12, md: 16, lg: 24, xl: 32, xxl: 48 } as const;
+
+export const shadows = {
+  none: { elevation: 0, shadowColor: 'transparent', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0, shadowRadius: 0 },
+  sm: { elevation: 1, shadowColor: '#111827', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.02, shadowRadius: 8 },
+  md: { elevation: 2, shadowColor: '#111827', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.04, shadowRadius: 12 },
+  lg: { elevation: 3, shadowColor: '#111827', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.06, shadowRadius: 16 },
+  xl: { elevation: 4, shadowColor: '#111827', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.08, shadowRadius: 20 },
+} as const;

@@ -6,7 +6,7 @@ import {
   View,
   type TextInputProps as RNTextInputProps,
 } from 'react-native';
-import { colors, radius } from '../index';
+import { colors, radius } from '../tokens';
 
 export interface TextInputProps extends RNTextInputProps {
   label?: string;

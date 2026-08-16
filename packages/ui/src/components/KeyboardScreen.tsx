@@ -5,7 +5,7 @@ import {
   ScrollView,
   StyleSheet,
 } from 'react-native';
-import { colors, space } from '../index';
+import { colors, space } from '../tokens';
 
 /**
  * A scrollable screen wrapper that keeps content above the keyboard.
