@@ -28,7 +28,11 @@ export default function RootLayout({
                 <span className="font-black text-xl tracking-tight text-[#10242D]">FURR <span className="text-[#66757C] font-medium">VET</span></span>
               </div>
               <nav className="flex gap-4 items-center">
-                <span className="text-sm font-semibold text-[#10242D]">Workspace</span>
+                <a href="/" className="text-sm font-semibold text-[#10242D] hover:text-[#006B78]">Workspace</a>
+                <a href="/consults" className="text-sm font-semibold text-[#006B78] bg-[#E6F4F5] px-3 py-1.5 rounded-lg flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                  Telehealth Desk
+                </a>
                 <span className="hidden sm:block text-sm font-medium text-[#66757C]">Owner-controlled access</span>
               </nav>
             </div>
