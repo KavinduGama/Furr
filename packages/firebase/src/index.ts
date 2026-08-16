@@ -68,7 +68,13 @@ export {
   DEV_BYPASS_CODE,
 } from './auth';
 
-export { getOwnerProfile, saveOwnerProfile, createOwnerProfile } from './owner-profile';
+export {
+  getOwnerProfile,
+  saveOwnerProfile,
+  createOwnerProfile,
+  updateSubscriptionTier,
+  updatePushToken,
+} from './owner-profile';
 
 // ── Re-exports from pet repository ───────────────────────────
 

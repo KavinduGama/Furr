@@ -24,7 +24,8 @@ export default function MyBookingsScreen() {
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 800);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    requestAnimationFrame(() => setRefreshing(false));
   }, []);
 
   const handleCancel = (bookingId: string) => {

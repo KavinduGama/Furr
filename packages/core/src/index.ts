@@ -90,6 +90,8 @@ export type OwnerProfile = {
   /** Firestore server timestamp — never client-generated. */
   createdAt: string;
   accountStatus: 'active' | 'suspended' | 'pending_deletion' | 'deleted';
+  subscriptionTier?: 'free' | 'plus' | 'family';
+  role?: 'owner' | 'vet' | 'admin' | 'clinic_admin';
 };
 
 // ── Pet ───────────────────────────────────────────────────────

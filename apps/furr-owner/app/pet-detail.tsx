@@ -23,7 +23,7 @@ type TabKey = 'Overview' | 'Records' | 'Growth' | 'More';
 export default function PetDetailScreen() {
   const { firebaseUser } = useAuth();
   const { selectedPet, removePet } = usePets();
-  const { vaccinations, medications, flags } = useHealth();
+  const { vaccinations, medications, flags, weights } = useHealth();
   const [archiving, setArchiving] = useState(false);
   const [activeTab, setActiveTab] = useState<TabKey>('Overview');
 
@@ -271,22 +271,146 @@ export default function PetDetailScreen() {
           </View>
         )}
 
-        {(activeTab === 'Growth' || activeTab === 'More') && (
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyText}>This section is coming soon.</Text>
-            {activeTab === 'More' && (
+        {/* Growth Tab */}
+        {activeTab === 'Growth' && (
+          <View style={styles.tabContent}>
+            {/* Weight Summary Cards */}
+            <View style={styles.statsRow}>
+              <View style={styles.statBox}>
+                <Text style={styles.statLabel}>Current Weight</Text>
+                <Text style={styles.statValue}>
+                  {weights.length > 0 ? `${weights[0].value} ${weights[0].unit || 'kg'}` : '—'}
+                </Text>
+                <Text style={styles.statSub}>
+                  {weights.length > 1
+                    ? `${(weights[0].value - weights[weights.length - 1].value).toFixed(1)} ${weights[0].unit || 'kg'} overall`
+                    : 'Target range: Optimal'}
+                </Text>
+              </View>
+              <View style={styles.statBox}>
+                <Text style={styles.statLabel}>Log Entries</Text>
+                <Text style={styles.statValue}>{weights.length}</Text>
+                <Text style={styles.statSub}>Logged records</Text>
+              </View>
+            </View>
+
+            {/* Growth & Weight Log Action */}
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Weight History</Text>
               <Pressable
                 accessibilityRole="button"
-                style={styles.archiveBtn}
-                onPress={handleArchive}
-                disabled={archiving}
+                onPress={() => router.push('/health/add-weight')}
+                style={styles.addWeightBtn}
               >
-                <Ionicons name="archive-outline" size={16} color={colors.danger} />
-                <Text style={styles.archiveBtnText}>
-                  {archiving ? 'Archiving…' : `Archive ${selectedPet.name}`}
-                </Text>
+                <Ionicons name="add-circle" size={16} color={colors.brand} />
+                <Text style={styles.addWeightBtnText}>Log Weight</Text>
               </Pressable>
+            </View>
+
+            {weights.length === 0 ? (
+              <View style={styles.emptyWeightCard}>
+                <Ionicons name="scale-outline" size={40} color={colors.muted} />
+                <Text style={styles.emptyWeightText}>No weight logs recorded yet.</Text>
+                <Pressable
+                  accessibilityRole="button"
+                  style={styles.quickAddWeightBtn}
+                  onPress={() => router.push('/health/add-weight')}
+                >
+                  <Text style={styles.quickAddWeightText}>+ Log First Weight</Text>
+                </Pressable>
+              </View>
+            ) : (
+              <View style={styles.recordList}>
+                {weights.map((entry) => (
+                  <View key={entry.id} style={styles.recordCard}>
+                    <View style={styles.recordIconWrap}>
+                      <Ionicons name="scale-outline" size={22} color={colors.brand} />
+                    </View>
+                    <View style={styles.recordCardContent}>
+                      <Text style={styles.recordTitle}>{entry.value} {entry.unit || 'kg'}</Text>
+                      <Text style={styles.recordDate}>
+                        {new Date(entry.measuredOn).toLocaleDateString('en-GB', {
+                          day: 'numeric',
+                          month: 'short',
+                          year: 'numeric',
+                        })}
+                      </Text>
+                      {entry.note ? (
+                        <Text style={styles.weightNote}>{entry.note}</Text>
+                      ) : null}
+                    </View>
+                    <Ionicons name="trending-up-outline" size={18} color={colors.success} />
+                  </View>
+                ))}
+              </View>
             )}
+          </View>
+        )}
+
+        {/* More Tab */}
+        {activeTab === 'More' && (
+          <View style={styles.tabContent}>
+            {/* Identity Dossier */}
+            <View style={styles.dossierCard}>
+              <Text style={styles.dossierTitle}>Pet Identity & Profile</Text>
+              
+              <View style={styles.dossierRow}>
+                <Text style={styles.dossierLabel}>Species & Breed</Text>
+                <Text style={styles.dossierValue}>
+                  {selectedPet.species === 'dog' ? 'Dog' : 'Cat'} • {selectedPet.breed || 'Mixed'}
+                </Text>
+              </View>
+
+              <View style={styles.dossierRow}>
+                <Text style={styles.dossierLabel}>Sex / Gender</Text>
+                <Text style={styles.dossierValue}>
+                  {selectedPet.sex ? selectedPet.sex.toUpperCase() : 'Unknown'}
+                  {selectedPet.isNeutered ? ' (Neutered/Spayed)' : ''}
+                </Text>
+              </View>
+
+              <View style={styles.dossierRow}>
+                <Text style={styles.dossierLabel}>Date of Birth</Text>
+                <Text style={styles.dossierValue}>{selectedPet.birthDate || 'Unknown'}</Text>
+              </View>
+
+              <View style={styles.dossierRow}>
+                <Text style={styles.dossierLabel}>ISO Microchip</Text>
+                <Text style={styles.dossierValue}>
+                  {selectedPet.microchipNumber || 'Not Registered'}
+                </Text>
+              </View>
+
+              {selectedPet.colour ? (
+                <View style={styles.dossierRow}>
+                  <Text style={styles.dossierLabel}>Color & Markings</Text>
+                  <Text style={styles.dossierValue}>{selectedPet.colour}</Text>
+                </View>
+              ) : null}
+            </View>
+
+            {/* Export PDF Dossier */}
+            <Pressable
+              accessibilityRole="button"
+              style={styles.exportBtn}
+              onPress={() => generateAndSharePdf(selectedPet, flags, vaccinations, medications)}
+            >
+              <Ionicons name="document-text" size={18} color={colors.brand} />
+              <Text style={styles.exportBtnText}>Export Pet Medical Dossier (PDF)</Text>
+            </Pressable>
+
+            {/* Archive Action */}
+            <Pressable
+              accessibilityRole="button"
+              style={styles.archiveBtn}
+              onPress={handleArchive}
+              disabled={archiving}
+            >
+              <Ionicons name="archive-outline" size={16} color={colors.danger} />
+              <Text style={styles.archiveBtnText}>
+                {archiving ? 'Archiving…' : `Archive ${selectedPet.name}`}
+              </Text>
+            </Pressable>
           </View>
         )}
       </Animated.ScrollView>
@@ -373,4 +497,20 @@ const styles = StyleSheet.create({
 
   archiveBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, paddingVertical: 14, marginTop: 20 },
   archiveBtnText: { color: colors.danger, fontSize: 14, fontWeight: '700' },
+
+  addWeightBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 4, paddingHorizontal: 8 },
+  addWeightBtnText: { color: colors.brand, fontSize: 14, fontWeight: '700' },
+
+  emptyWeightCard: { backgroundColor: colors.surface, borderRadius: radius.xl, padding: space.xl, alignItems: 'center', justifyContent: 'center', gap: space.md, ...shadows.sm },
+  emptyWeightText: { color: colors.muted, fontSize: 15, fontWeight: '500' },
+  quickAddWeightBtn: { backgroundColor: colors.brand, paddingHorizontal: space.lg, paddingVertical: 10, borderRadius: radius.pill },
+  quickAddWeightText: { color: '#FFFFFF', fontSize: 14, fontWeight: '800' },
+
+  weightNote: { color: colors.ink, fontSize: 13, marginTop: 4, fontStyle: 'italic' },
+
+  dossierCard: { backgroundColor: colors.surface, borderRadius: radius.xl, padding: space.lg, gap: space.md, ...shadows.sm },
+  dossierTitle: { color: colors.ink, fontSize: 17, fontWeight: '800', marginBottom: space.xs },
+  dossierRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: colors.line },
+  dossierLabel: { color: colors.muted, fontSize: 14, fontWeight: '600' },
+  dossierValue: { color: colors.ink, fontSize: 14, fontWeight: '700', textAlign: 'right' },
 });

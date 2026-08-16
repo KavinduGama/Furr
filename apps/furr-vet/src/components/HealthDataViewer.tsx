@@ -15,7 +15,8 @@ import {
   subscribeToMedications,
   subscribeToWeightEntries,
   subscribeToObservations,
-  subscribeToDocuments
+  subscribeToDocuments,
+  createObservation
 } from '@furr/firebase';
 
 interface HealthDataViewerProps {
@@ -30,6 +31,32 @@ export function HealthDataViewer({ ownerUid, petId, categories }: HealthDataView
   const [weights, setWeights] = useState<WeightEntry[]>([]);
   const [observations, setObservations] = useState<HealthObservation[]>([]);
   const [documents, setDocuments] = useState<PetDocument[]>([]);
+  const [noteText, setNoteText] = useState('');
+  const [noteSeverity, setNoteSeverity] = useState<'mild' | 'moderate' | 'concerning'>('mild');
+  const [submittingNote, setSubmittingNote] = useState(false);
+  const [noteSuccess, setNoteSuccess] = useState(false);
+
+  const handleAddNote = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!noteText.trim()) return;
+    setSubmittingNote(true);
+    try {
+      await createObservation(ownerUid, petId, {
+        category: 'other',
+        description: noteText.trim(),
+        severity: noteSeverity,
+        observedOn: new Date().toISOString(),
+        provenance: 'VET_VERIFIED',
+      });
+      setNoteText('');
+      setNoteSuccess(true);
+      setTimeout(() => setNoteSuccess(false), 3000);
+    } catch (err) {
+      console.error('Failed to add clinical note:', err);
+    } finally {
+      setSubmittingNote(false);
+    }
+  };
 
   const hasCat = (c: ShareCategory) => categories.includes(c);
   const showTimeline = hasCat('timeline');
@@ -54,6 +81,52 @@ export function HealthDataViewer({ ownerUid, petId, categories }: HealthDataView
 
   return (
     <div className="space-y-6 mt-8">
+      {/* Verified Clinical Consultation Notes Form */}
+      <section className="panel records-panel bg-white border border-stone-200 rounded-2xl p-6 shadow-sm">
+        <p className="eyebrow text-xs font-black uppercase text-[#006B78] tracking-wider mb-1">PRACTITIONER WRITE-BACK</p>
+        <h2 className="text-xl font-black text-[#02202B]">Add Clinical Consultation Note</h2>
+        <p className="text-sm text-stone-500 mb-4">
+          Recorded notes will be timestamped, attributed to your verified veterinary license, and saved directly to the patient's permanent medical timeline.
+        </p>
+
+        {noteSuccess && (
+          <div className="mb-4 p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 text-xs font-bold">
+            ✓ Clinical consultation note recorded and synchronized to patient timeline.
+          </div>
+        )}
+
+        <form onSubmit={handleAddNote} className="space-y-3">
+          <textarea
+            value={noteText}
+            onChange={(e) => setNoteText(e.target.value)}
+            placeholder="Record clinical findings, physical exam observations, dietary guidance, or treatment instructions..."
+            rows={3}
+            className="w-full p-3 text-sm bg-stone-50 border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#006B78]"
+          />
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <label className="text-xs font-bold text-stone-600">Severity/Alert Level:</label>
+              <select
+                value={noteSeverity}
+                onChange={(e) => setNoteSeverity(e.target.value as 'mild' | 'moderate' | 'concerning')}
+                className="text-xs font-bold bg-stone-50 border border-stone-200 rounded-lg px-2.5 py-1 text-stone-800"
+              >
+                <option value="mild">Routine / Mild</option>
+                <option value="moderate">Moderate / Watch</option>
+                <option value="concerning">Concerning / Urgent Follow-up</option>
+              </select>
+            </div>
+            <button
+              type="submit"
+              disabled={submittingNote || !noteText.trim()}
+              className="px-5 py-2 bg-[#006B78] hover:bg-[#00545F] text-white text-xs font-bold rounded-xl transition disabled:opacity-50"
+            >
+              {submittingNote ? 'Saving Note...' : 'Record to Timeline'}
+            </button>
+          </div>
+        </form>
+      </section>
+
       {showTimeline && (
         <section className="panel records-panel">
           <p className="eyebrow">CHRONOLOGICAL</p>

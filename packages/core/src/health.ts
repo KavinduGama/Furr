@@ -123,7 +123,7 @@ export type HealthObservation = {
   severity?: ObservationSeverity;
   observedOn: string;
   documentPath?: string;
-  provenance: 'OWNER_ENTERED';
+  provenance: 'OWNER_ENTERED' | 'VET_VERIFIED';
   createdByUid: string;
   isArchived: boolean;
   createdAt: string;

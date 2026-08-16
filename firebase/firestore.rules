@@ -296,24 +296,22 @@ service cloud.firestore {
 
     // ── Clinic Operations Collections ─────────────────────────
     match /clinic_queue/{docId} {
-      allow read, write: if isSignedIn();
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isAdmin() || hasRole('clinic_admin') || hasRole('vet');
     }
 
     match /clinic_appointments/{docId} {
-      allow read, write: if isSignedIn();
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isAdmin() || hasRole('clinic_admin');
     }
 
     match /clinic_staff/{docId} {
       allow read: if isSignedIn();
       allow write: if isAdmin() || hasRole('clinic_admin');
-    }
-
-    // ── Found Pet Community Reports ───────────────────────────
-    match /found_pet_reports/{docId} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update: if isSignedIn() && (resource.data.reporterUid == request.auth.uid || isAdmin());
-      allow delete: if isAdmin();
     }
 
     // ── Default deny ──────────────────────────────────────────

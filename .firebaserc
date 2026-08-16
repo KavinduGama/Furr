@@ -1,0 +1,6 @@
+{
+  "projects": {
+    "default": "furr-prod",
+    "staging": "furr-staging"
+  }
+}

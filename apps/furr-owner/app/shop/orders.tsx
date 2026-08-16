@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable, Image, RefreshControl } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { router, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, radius, space, Button } from '@furr/ui';
@@ -25,7 +26,8 @@ export default function OrdersScreen() {
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 800);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    requestAnimationFrame(() => setRefreshing(false));
   }, []);
 
   return (

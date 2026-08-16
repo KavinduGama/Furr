@@ -55,3 +55,44 @@ export async function createOwnerProfile(profile: OwnerProfile): Promise<void> {
     updatedAt: serverTimestamp(),
   });
 }
+
+/**
+ * Update the user's subscription tier in Firestore.
+ */
+export async function updateSubscriptionTier(
+  uid: string,
+  tier: 'free' | 'plus' | 'family'
+): Promise<void> {
+  if (IS_DEV_BYPASS) return;
+
+  const { getFirestore, doc, setDoc, serverTimestamp } = await import('firebase/firestore');
+  await setDoc(
+    doc(getFirestore(), 'users', uid),
+    {
+      subscriptionTier: tier,
+      updatedAt: serverTimestamp(),
+    },
+    { merge: true }
+  );
+}
+
+/**
+ * Update the user's Expo push token in Firestore.
+ */
+export async function updatePushToken(
+  uid: string,
+  expoPushToken: string
+): Promise<void> {
+  if (IS_DEV_BYPASS) return;
+
+  const { getFirestore, doc, setDoc, serverTimestamp } = await import('firebase/firestore');
+  await setDoc(
+    doc(getFirestore(), 'users', uid),
+    {
+      expoPushToken,
+      notificationsEnabled: true,
+      updatedAt: serverTimestamp(),
+    },
+    { merge: true }
+  );
+}

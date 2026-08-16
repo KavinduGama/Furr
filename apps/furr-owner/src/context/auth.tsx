@@ -113,6 +113,15 @@ export function AuthProvider({ children }: PropsWithChildren) {
       try {
         const fetchedProfile = await getOwnerProfile(user.uid);
         setProfileState(fetchedProfile);
+        // Register Expo Push Token asynchronously for background notifications
+        void (async () => {
+          try {
+            const { registerForPushNotificationsAsync } = await import('../utils/pushToken');
+            await registerForPushNotificationsAsync(user.uid);
+          } catch (e) {
+            console.log('Push token registration skipped:', e);
+          }
+        })();
       } catch {
         // Profile fetch failed; treat as new user (profile = null)
         setProfileState(null);

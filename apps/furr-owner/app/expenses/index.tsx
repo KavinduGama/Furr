@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router, Stack } from 'expo-router';
 import { useMemo, useState, useCallback } from 'react';
 import { Pressable, StyleSheet, Text, View, ScrollView, Image, RefreshControl } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { PieChart } from 'react-native-gifted-charts';
 import { Swipeable } from 'react-native-gesture-handler';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
@@ -43,7 +44,8 @@ export default function ExpensesScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 800);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    requestAnimationFrame(() => setRefreshing(false));
   }, []);
 
   return (

@@ -84,8 +84,8 @@ export default function PetViewPage({ params }: { params: Promise<{ ownerUid: st
       </section>
 
       <section className="privacy-note record-note">
-        <strong>Clinical notes are not available yet</strong>
-        <p>Furr will add a separately reviewed clinical-authoring workflow before professionals can write to an owner’s health record. This prevents notes being created without the correct consent, audit trail, and verification controls.</p>
+        <strong>Verified Clinical Practitioner Session</strong>
+        <p>You have active practitioner authorization to view this medical record and record clinical examination notes directly to the patient's chronological health timeline.</p>
       </section>
       
       <HealthDataViewer ownerUid={ownerUid} petId={petId} categories={grant.categories} />

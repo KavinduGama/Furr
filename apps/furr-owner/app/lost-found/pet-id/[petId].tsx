@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, Share, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable, Share, Alert, Image } from 'react-native';
 import { useLocalSearchParams, router, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
@@ -98,18 +98,24 @@ export default function DigitalPetIdScreen() {
             </View>
             <View style={styles.tableRow}>
               <Text style={styles.tableLabel}>PRIMARY OWNER</Text>
-              <Text style={styles.tableValue}>{profile?.displayName || 'Kavindu Deshappriya'}</Text>
+              <Text style={styles.tableValue}>{profile?.displayName || 'Pet Owner'}</Text>
             </View>
             <View style={styles.tableRow}>
               <Text style={styles.tableLabel}>EMERGENCY PHONE</Text>
-              <Text style={styles.tableValue}>+94 77 123 4567</Text>
+              <Text style={styles.tableValue}>{profile?.phoneE164 || '+94 77 000 0000'}</Text>
             </View>
           </View>
 
           {/* QR Code Presentation Box */}
           <View style={styles.qrSection}>
             <View style={styles.qrMock}>
-              <Ionicons name="qr-code" size={130} color={colors.ink} />
+              <Image
+                source={{
+                  uri: `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(emergencyUrl)}&color=02202B`,
+                }}
+                style={{ width: 140, height: 140 }}
+                resizeMode="contain"
+              />
             </View>
             <Text style={styles.qrInstruction}>
               Scan to view verified health records, allergy warnings, and emergency finder contact.

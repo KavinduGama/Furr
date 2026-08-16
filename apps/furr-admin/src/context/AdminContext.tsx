@@ -22,6 +22,11 @@ import {
   saveAdminClinic,
   subscribeToAdminAuditLogs,
   recordAdminAuditLog,
+  subscribeToProducts,
+  subscribeToServiceProviders,
+  subscribeToLostAlerts,
+  subscribeToQuestions,
+  subscribeToMeetups,
   type VetApplicant,
   type ClinicRegistration,
   type AdminOrder,
@@ -128,11 +133,21 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
     const unsubVets = subscribeToAdminVets((data) => setVets(data));
     const unsubClinics = subscribeToAdminClinics((data) => setClinics(data));
     const unsubLogs = subscribeToAdminAuditLogs((data) => setAuditLogs(data));
+    const unsubProducts = subscribeToProducts((data) => setProducts(data));
+    const unsubProviders = subscribeToServiceProviders((data) => setProviders(data));
+    const unsubLost = subscribeToLostAlerts((data) => setLostAlerts(data));
+    const unsubQuestions = subscribeToQuestions((data) => setQuestions(data));
+    const unsubMeetups = subscribeToMeetups((data) => setMeetups(data));
 
     return () => {
       unsubVets();
       unsubClinics();
       unsubLogs();
+      unsubProducts();
+      unsubProviders();
+      unsubLost();
+      unsubQuestions();
+      unsubMeetups();
     };
   }, []);
 
