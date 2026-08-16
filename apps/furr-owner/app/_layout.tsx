@@ -15,6 +15,7 @@ import { ServicesProvider } from '@/src/context/services';
 import { TelemedicineProvider } from '@/src/context/telemedicine';
 import { CommunityProvider } from '@/src/context/community';
 import { CareProvider } from '@/src/context/care';
+import { LostFoundProvider } from '@/src/context/lostfound';
 import { AuthNavigationGuard } from '@/src/components/AuthNavigationGuard';
 import {
   firebaseOptionsFromEnvironment,
@@ -44,10 +45,12 @@ export default function RootLayout() {
                         <TelemedicineProvider>
                           <CommunityProvider>
                             <CareProvider>
-                              <AuthNavigationGuard>
-                                <StatusBar style="dark" />
-                                <Stack screenOptions={{ headerShown: false, animation: 'fade' }} />
-                              </AuthNavigationGuard>
+                              <LostFoundProvider>
+                                <AuthNavigationGuard>
+                                  <StatusBar style="dark" />
+                                  <Stack screenOptions={{ headerShown: false, animation: 'fade' }} />
+                                </AuthNavigationGuard>
+                              </LostFoundProvider>
                             </CareProvider>
                           </CommunityProvider>
                         </TelemedicineProvider>
