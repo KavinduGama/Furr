@@ -3,28 +3,31 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Button, colors, radius, space } from '@furr/ui';
-import { useSubscription } from '@/src/context/subscription';
+import { useSubscription, SubscriptionTier } from '@/src/context/subscription';
 
-const FEATURES = [
-  { icon: 'paw', text: 'Add unlimited pets to your account' },
+const PLUS_FEATURES = [
+  { icon: 'paw', text: 'Unlimited pet profiles & care timelines' },
   { icon: 'document-text', text: 'Generate beautiful PDF health reports' },
   { icon: 'qr-code', text: 'Share secure QR codes with your vet' },
-  { icon: 'cloud-upload', text: 'Unlimited secure document storage' },
+  { icon: 'cloud-upload', text: 'High-res medical document storage' },
+];
+
+const FAMILY_FEATURES = [
+  { icon: 'people', text: 'All Furr+ features for up to 5 family members' },
+  { icon: 'calendar', text: 'Shared household feeding & walk calendar' },
+  { icon: 'heart', text: 'Priority vet chat & telemedicine queue' },
+  { icon: 'shield-checkmark', text: 'Insurance partner discounts' },
 ];
 
 export default function PaywallScreen() {
-  const { isPremium, purchaseMonthly, purchaseYearly, restorePurchases } = useSubscription();
-  const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'yearly'>('yearly');
+  const { isPremium, tier, upgradeTier, restorePurchases } = useSubscription();
+  const [selectedTier, setSelectedTier] = useState<SubscriptionTier>('plus');
   const [loading, setLoading] = useState(false);
 
   const handlePurchase = async () => {
     setLoading(true);
     try {
-      if (selectedPlan === 'yearly') {
-        await purchaseYearly();
-      } else {
-        await purchaseMonthly();
-      }
+      await upgradeTier(selectedTier);
       router.back();
     } catch (e) {
       console.error(e);
@@ -47,8 +50,10 @@ export default function PaywallScreen() {
       <View style={styles.screen}>
         <View style={styles.successBox}>
           <Ionicons name="checkmark-circle" size={80} color={colors.success} />
-          <Text style={styles.successTitle}>You are a Premium Member!</Text>
-          <Text style={styles.successCopy}>Thank you for supporting Furr. You have full access to all premium features.</Text>
+          <Text style={styles.successTitle}>Active Subscription: Furr {tier.toUpperCase()}</Text>
+          <Text style={styles.successCopy}>
+            Thank you for supporting Furr! You have full access to all premium features.
+          </Text>
           <Button label="Go back" onPress={() => router.back()} />
         </View>
       </View>
@@ -58,73 +63,83 @@ export default function PaywallScreen() {
   return (
     <View style={styles.screen}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        
         {/* Header & Back */}
         <View style={styles.topBar}>
           <Pressable accessibilityRole="button" onPress={() => router.back()} style={styles.closeBtn}>
-            <Ionicons name="close" size={28} color={colors.ink} />
+            <Ionicons name="close" size={26} color={colors.ink} />
           </Pressable>
         </View>
 
         <View style={styles.hero}>
           <View style={styles.heroIconWrap}>
-            <Ionicons name="star" size={48} color={colors.brand} />
+            <Ionicons name="star" size={44} color={colors.brand} />
           </View>
-          <Text style={styles.title}>Unlock Furr Premium</Text>
-          <Text style={styles.subhead}>Give your companions the best care possible with advanced tracking and unlimited features.</Text>
+          <Text style={styles.title}>Unlock Furr Super App</Text>
+          <Text style={styles.subhead}>
+            Give your pets the ultimate care with unlimited tracking, family sharing, and priority support.
+          </Text>
         </View>
 
         {/* Feature List */}
         <View style={styles.featureList}>
-          {FEATURES.map((feat, idx) => (
+          {(selectedTier === 'family' ? FAMILY_FEATURES : PLUS_FEATURES).map((feat, idx) => (
             <View key={idx} style={styles.featureItem}>
               <View style={styles.featureIcon}>
-                <Ionicons name={feat.icon as any} size={20} color={colors.brand} />
+                <Ionicons name={feat.icon as any} size={18} color={colors.brand} />
               </View>
               <Text style={styles.featureText}>{feat.text}</Text>
             </View>
           ))}
         </View>
 
-        {/* Pricing Toggle */}
+        {/* Pricing Selection */}
         <View style={styles.pricingContainer}>
           <Pressable
             accessibilityRole="button"
-            onPress={() => setSelectedPlan('yearly')}
-            style={[styles.planCard, selectedPlan === 'yearly' && styles.planCardActive]}
+            onPress={() => setSelectedTier('plus')}
+            style={[styles.planCard, selectedTier === 'plus' && styles.planCardActive]}
           >
-            {selectedPlan === 'yearly' && <View style={styles.popularBadge}><Text style={styles.popularText}>BEST VALUE</Text></View>}
             <View style={styles.planHeader}>
-              <View style={[styles.radio, selectedPlan === 'yearly' && styles.radioActive]}>
-                {selectedPlan === 'yearly' && <View style={styles.radioInner} />}
+              <View style={[styles.radio, selectedTier === 'plus' && styles.radioActive]}>
+                {selectedTier === 'plus' && <View style={styles.radioInner} />}
               </View>
-              <Text style={[styles.planTitle, selectedPlan === 'yearly' && styles.planTitleActive]}>Yearly</Text>
+              <Text style={[styles.planTitle, selectedTier === 'plus' && styles.planTitleActive]}>Furr+</Text>
             </View>
-            <Text style={styles.planPrice}>Rs 2,990 <Text style={styles.planPeriod}>/ year</Text></Text>
-            <Text style={styles.planSavings}>Save 50% compared to monthly</Text>
+            <Text style={styles.planPrice}>
+              LKR 499 <Text style={styles.planPeriod}>/ month</Text>
+            </Text>
+            <Text style={styles.planDesc}>Unlimited pets, PDF exports & smart care</Text>
           </Pressable>
 
           <Pressable
             accessibilityRole="button"
-            onPress={() => setSelectedPlan('monthly')}
-            style={[styles.planCard, selectedPlan === 'monthly' && styles.planCardActive]}
+            onPress={() => setSelectedTier('family')}
+            style={[styles.planCard, selectedTier === 'family' && styles.planCardActive]}
           >
-            <View style={styles.planHeader}>
-              <View style={[styles.radio, selectedPlan === 'monthly' && styles.radioActive]}>
-                {selectedPlan === 'monthly' && <View style={styles.radioInner} />}
-              </View>
-              <Text style={[styles.planTitle, selectedPlan === 'monthly' && styles.planTitleActive]}>Monthly</Text>
+            <View style={styles.popularBadge}>
+              <Text style={styles.popularText}>FAMILY & VET</Text>
             </View>
-            <Text style={styles.planPrice}>Rs 490 <Text style={styles.planPeriod}>/ month</Text></Text>
+            <View style={styles.planHeader}>
+              <View style={[styles.radio, selectedTier === 'family' && styles.radioActive]}>
+                {selectedTier === 'family' && <View style={styles.radioInner} />}
+              </View>
+              <Text style={[styles.planTitle, selectedTier === 'family' && styles.planTitleActive]}>
+                Furr Family
+              </Text>
+            </View>
+            <Text style={styles.planPrice}>
+              LKR 799 <Text style={styles.planPeriod}>/ month</Text>
+            </Text>
+            <Text style={styles.planDesc}>Up to 5 family members + priority vet queue</Text>
           </Pressable>
         </View>
 
         {/* Action Button */}
         <View style={styles.actionContainer}>
-          <Button 
-            label={loading ? 'Processing...' : `Subscribe ${selectedPlan === 'yearly' ? 'Yearly' : 'Monthly'}`} 
+          <Button
+            label={loading ? 'Processing...' : `Subscribe to Furr ${selectedTier === 'family' ? 'Family' : '+'}`}
             loading={loading}
-            onPress={handlePurchase} 
+            onPress={handlePurchase}
           />
           <Pressable onPress={handleRestore} style={styles.restoreBtn} disabled={loading}>
             <Text style={styles.restoreText}>Restore Purchases</Text>
@@ -134,10 +149,10 @@ export default function PaywallScreen() {
         {/* Legal */}
         <View style={styles.legal}>
           <Text style={styles.legalText}>
-            Recurring billing. Cancel anytime. By subscribing, you agree to our <Text style={styles.legalLink}>Terms of Service</Text> and <Text style={styles.legalLink}>Privacy Policy</Text>.
+            7-day free trial. Cancel anytime. By subscribing, you agree to our{' '}
+            <Text style={styles.legalLink}>Terms</Text> and <Text style={styles.legalLink}>Privacy Policy</Text>.
           </Text>
         </View>
-
       </ScrollView>
     </View>
   );
@@ -146,47 +161,96 @@ export default function PaywallScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.canvas },
   content: { paddingBottom: space.xxl },
-  
+
   successBox: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: space.xl, gap: space.md },
-  successTitle: { fontSize: 24, fontWeight: '900', color: colors.ink },
-  successCopy: { fontSize: 16, color: colors.muted, textAlign: 'center', marginBottom: space.lg },
+  successTitle: { fontSize: 22, fontWeight: '900', color: colors.ink, textAlign: 'center' },
+  successCopy: { fontSize: 15, color: colors.muted, textAlign: 'center', marginBottom: space.lg },
 
   topBar: { paddingHorizontal: space.lg, paddingTop: space.md, paddingBottom: space.sm, alignItems: 'flex-start' },
-  closeBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center', shadowColor: colors.ink, shadowOpacity: 0.05, shadowRadius: 10, elevation: 2 },
+  closeBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: colors.ink,
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 2,
+  },
 
-  hero: { paddingHorizontal: space.xl, alignItems: 'center', marginTop: space.sm },
-  heroIconWrap: { width: 96, height: 96, borderRadius: 48, backgroundColor: '#FEF3C7', alignItems: 'center', justifyContent: 'center', marginBottom: space.lg },
-  title: { color: colors.ink, fontSize: 32, fontWeight: '900', letterSpacing: -1, textAlign: 'center' },
-  subhead: { color: colors.muted, fontSize: 16, textAlign: 'center', marginTop: 12, lineHeight: 24 },
+  hero: { paddingHorizontal: space.xl, alignItems: 'center', marginTop: space.xs },
+  heroIconWrap: {
+    width: 84,
+    height: 84,
+    borderRadius: 42,
+    backgroundColor: '#FEF3C7',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: space.md,
+  },
+  title: { color: colors.ink, fontSize: 28, fontWeight: '900', letterSpacing: -0.5, textAlign: 'center' },
+  subhead: { color: colors.muted, fontSize: 14, textAlign: 'center', marginTop: 8, lineHeight: 20 },
 
-  featureList: { paddingHorizontal: space.xl, marginTop: space.xl, gap: space.md },
-  featureItem: { flexDirection: 'row', alignItems: 'center', gap: 14 },
-  featureIcon: { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.mist, alignItems: 'center', justifyContent: 'center' },
-  featureText: { flex: 1, color: colors.ink, fontSize: 15, fontWeight: '600' },
+  featureList: { paddingHorizontal: space.xl, marginTop: space.lg, gap: space.sm },
+  featureItem: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  featureIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: colors.softBrand,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  featureText: { flex: 1, color: colors.ink, fontSize: 14, fontWeight: '600' },
 
-  pricingContainer: { paddingHorizontal: space.lg, marginTop: space.xxl, gap: space.md },
-  planCard: { backgroundColor: colors.surface, borderRadius: radius.xl, padding: space.lg, borderWidth: 2, borderColor: colors.line, position: 'relative' },
-  planCardActive: { borderColor: colors.brand, backgroundColor: colors.softBrand },
-  
-  popularBadge: { position: 'absolute', top: -12, right: 24, backgroundColor: colors.brand, paddingHorizontal: 12, paddingVertical: 4, borderRadius: radius.pill },
-  popularText: { color: '#fff', fontSize: 10, fontWeight: '900', letterSpacing: 1 },
+  pricingContainer: { paddingHorizontal: space.lg, marginTop: space.xl, gap: space.md },
+  planCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.xl,
+    padding: space.md,
+    borderWidth: 2,
+    borderColor: colors.line,
+    position: 'relative',
+  },
+  planCardActive: { borderColor: colors.brand, backgroundColor: '#FFFDF5' },
+
+  popularBadge: {
+    position: 'absolute',
+    top: -10,
+    right: 20,
+    backgroundColor: colors.brand,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: radius.pill,
+  },
+  popularText: { color: '#fff', fontSize: 9, fontWeight: '900', letterSpacing: 0.5 },
 
   planHeader: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  radio: { width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: colors.muted, alignItems: 'center', justifyContent: 'center' },
+  radio: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: colors.muted,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   radioActive: { borderColor: colors.brand },
-  radioInner: { width: 12, height: 12, borderRadius: 6, backgroundColor: colors.brand },
-  planTitle: { fontSize: 18, fontWeight: '800', color: colors.muted },
+  radioInner: { width: 10, height: 10, borderRadius: 5, backgroundColor: colors.brand },
+  planTitle: { fontSize: 17, fontWeight: '800', color: colors.muted },
   planTitleActive: { color: colors.ink },
-  
-  planPrice: { fontSize: 24, fontWeight: '900', color: colors.ink, marginTop: space.sm, paddingLeft: 32 },
-  planPeriod: { fontSize: 16, fontWeight: '600', color: colors.muted },
-  planSavings: { fontSize: 13, fontWeight: '800', color: colors.success, marginTop: 4, paddingLeft: 32 },
+
+  planPrice: { fontSize: 22, fontWeight: '900', color: colors.ink, marginTop: space.xs, paddingLeft: 30 },
+  planPeriod: { fontSize: 14, fontWeight: '600', color: colors.muted },
+  planDesc: { fontSize: 12, color: colors.muted, marginTop: 2, paddingLeft: 30 },
 
   actionContainer: { paddingHorizontal: space.lg, marginTop: space.xl },
-  restoreBtn: { paddingVertical: 16, alignItems: 'center', marginTop: 4 },
-  restoreText: { color: colors.brand, fontSize: 15, fontWeight: '700' },
+  restoreBtn: { paddingVertical: 14, alignItems: 'center', marginTop: 2 },
+  restoreText: { color: colors.brand, fontSize: 14, fontWeight: '700' },
 
-  legal: { paddingHorizontal: space.xl, marginTop: space.sm },
-  legalText: { color: colors.muted, fontSize: 12, textAlign: 'center', lineHeight: 18 },
+  legal: { paddingHorizontal: space.xl, marginTop: space.xs },
+  legalText: { color: colors.muted, fontSize: 11, textAlign: 'center', lineHeight: 16 },
   legalLink: { fontWeight: '700', color: colors.muted, textDecorationLine: 'underline' },
 });

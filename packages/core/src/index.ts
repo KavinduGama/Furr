@@ -270,3 +270,11 @@ export const demoRecords: HealthRecord[] = [
   },
 ];
 export * from './vet';
+export * from './marketplace';
+export * from './services';
+export * from './telemedicine';
+export * from './community';
+export * from './care';
+export * from './lostfound';
+export * from './family';
+

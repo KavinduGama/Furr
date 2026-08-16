@@ -1,40 +1,35 @@
 import React, { createContext, useContext, useState } from 'react';
 import { Alert } from 'react-native';
 
-type SubscriptionTier = 'free' | 'premium';
+export type SubscriptionTier = 'free' | 'plus' | 'family';
 
 interface SubscriptionContextType {
   tier: SubscriptionTier;
+  isPlus: boolean;
+  isFamily: boolean;
   isPremium: boolean;
-  purchaseMonthly: () => Promise<void>;
-  purchaseYearly: () => Promise<void>;
+  upgradeTier: (targetTier: SubscriptionTier) => Promise<void>;
   restorePurchases: () => Promise<void>;
 }
 
 const SubscriptionContext = createContext<SubscriptionContextType | null>(null);
 
 export function SubscriptionProvider({ children }: { children: React.ReactNode }) {
-  // Mocked state: start as free.
   const [tier, setTier] = useState<SubscriptionTier>('free');
 
-  const purchaseMonthly = async () => {
-    // Mock the delay of a purchase
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    setTier('premium');
-  };
-
-  const purchaseYearly = async () => {
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    setTier('premium');
+  const upgradeTier = async (targetTier: SubscriptionTier) => {
+    // Simulates payment transaction completion
+    await new Promise((resolve) => setTimeout(resolve, 1200));
+    setTier(targetTier);
+    Alert.alert('Subscription Active!', `Welcome to Furr ${targetTier === 'family' ? 'Family' : 'Plus'}!`);
   };
 
   const restorePurchases = async () => {
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    // For mocking purposes, let's just say no purchases found unless they are already premium
-    if (tier !== 'premium') {
-      Alert.alert('Restore Failed', 'No active subscription found.');
+    await new Promise((resolve) => setTimeout(resolve, 800));
+    if (tier === 'free') {
+      Alert.alert('Restore Purchases', 'No prior active subscription found.');
     } else {
-      Alert.alert('Success', 'Your purchases have been restored.');
+      Alert.alert('Restored!', `Restored active Furr ${tier.toUpperCase()} subscription.`);
     }
   };
 
@@ -42,9 +37,10 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
     <SubscriptionContext.Provider
       value={{
         tier,
-        isPremium: tier === 'premium',
-        purchaseMonthly,
-        purchaseYearly,
+        isPlus: tier === 'plus' || tier === 'family',
+        isFamily: tier === 'family',
+        isPremium: tier !== 'free',
+        upgradeTier,
         restorePurchases,
       }}
     >
