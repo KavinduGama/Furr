@@ -10,9 +10,34 @@ import type { Pet } from '@furr/core';
 
 // ── Dev-bypass in-memory store ────────────────────────────────
 
-const IS_DEV_BYPASS = typeof process !== 'undefined' && !process.env?.EXPO_PUBLIC_FIREBASE_API_KEY;
+const IS_DEV_BYPASS = typeof process !== 'undefined' && !process.env?.EXPO_PUBLIC_FIREBASE_API_KEY && !process.env?.NEXT_PUBLIC_FIREBASE_API_KEY;
 
 let devPets: Pet[] = [];
+const devSubscribers = new Set<{ ownerUid: string; onUpdate: (pets: Pet[]) => void }>();
+
+function notifyDevSubscribers(): void {
+  for (const subscriber of devSubscribers) {
+    subscriber.onUpdate(devPets.filter((pet) => pet.ownerUid === subscriber.ownerUid && pet.status === 'active'));
+  }
+}
+
+function toIso(value: unknown, fallback: string): string {
+  if (typeof value === 'string') return value;
+  if (value && typeof value === 'object' && 'toDate' in value && typeof value.toDate === 'function') {
+    return value.toDate().toISOString();
+  }
+  return fallback;
+}
+
+function normalisePet(data: Record<string, unknown>, id: string): Pet {
+  const now = new Date().toISOString();
+  return {
+    ...data,
+    id,
+    createdAt: toIso(data.createdAt, now),
+    updatedAt: toIso(data.updatedAt, now),
+  } as Pet;
+}
 
 function devId(): string {
   return `dev-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
@@ -20,9 +45,9 @@ function devId(): string {
 
 // ── Firestore paths ───────────────────────────────────────────
 
-// Collection: ownerPets/{uid}/pets/{petId}
+// Collection: users/{uid}/pets/{petId}
 function petsPath(ownerUid: string) {
-  return `ownerPets/${ownerUid}/pets`;
+  return `users/${ownerUid}/pets`;
 }
 
 // ── Repository ───────────────────────────────────────────────
@@ -36,12 +61,15 @@ export function subscribeToPets(
   onUpdate: (pets: Pet[]) => void,
 ): () => void {
   if (IS_DEV_BYPASS) {
-    // Synchronously return current dev pets, then do nothing more
-    onUpdate([...devPets]);
-    return () => {};
+    const subscriber = { ownerUid, onUpdate };
+    devSubscribers.add(subscriber);
+    notifyDevSubscribers();
+    return () => devSubscribers.delete(subscriber);
   }
 
   // Real Firestore — lazy-import to avoid bundling when not needed
+  let unsubscribe: (() => void) | undefined;
+  let active = true;
   void (async () => {
     try {
       const { getFirestore, collection, query, where, orderBy, onSnapshot } = await import(
@@ -53,19 +81,17 @@ export function subscribeToPets(
         where('status', '==', 'active'),
         orderBy('createdAt', 'asc'),
       );
-      const unsub = onSnapshot(q, (snap) => {
-        const pets = snap.docs.map((d) => d.data() as Pet);
+      unsubscribe = onSnapshot(q, (snap) => {
+        const pets = snap.docs.map((d) => normalisePet(d.data(), d.id));
         onUpdate(pets);
-      });
-      return unsub;
+      }, () => active && onUpdate([]));
     } catch (err) {
       console.error('[furr/firebase] subscribeToPets error', err);
       onUpdate([]);
-      return () => {};
     }
   })();
 
-  return () => {};
+  return () => { active = false; unsubscribe?.(); };
 }
 
 /**
@@ -87,6 +113,7 @@ export async function createPet(
       updatedAt: now,
     };
     devPets = [...devPets, pet];
+    notifyDevSubscribers();
     return pet;
   }
 
@@ -120,6 +147,7 @@ export async function updatePet(
     devPets = devPets.map((p) =>
       p.id === petId ? { ...p, ...updates, updatedAt: now } : p,
     );
+    notifyDevSubscribers();
     return;
   }
 

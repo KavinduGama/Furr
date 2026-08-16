@@ -39,7 +39,7 @@ const PetContext = createContext<PetContextValue | null>(null);
 // ─────────────────────────────────────────────────────────────
 
 export function PetProvider({ children }: PropsWithChildren) {
-  const { firebaseUser, status } = useAuth();
+  const { firebaseUser, status, isPreviewSession } = useAuth();
   const [pets, setPets] = useState<Pet[]>([]);
   const [selectedPetId, setSelectedPetId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -48,6 +48,11 @@ export function PetProvider({ children }: PropsWithChildren) {
   useEffect(() => {
     if (status !== 'authenticated' || !firebaseUser) {
       setPets([]);
+      setIsLoading(false);
+      return;
+    }
+
+    if (isPreviewSession) {
       setIsLoading(false);
       return;
     }
@@ -64,7 +69,7 @@ export function PetProvider({ children }: PropsWithChildren) {
     });
 
     return unsub;
-  }, [firebaseUser, status]);
+  }, [firebaseUser, status, isPreviewSession]);
 
   // ── Actions ──────────────────────────────────────────────────
 
@@ -73,7 +78,7 @@ export function PetProvider({ children }: PropsWithChildren) {
   }, []);
 
   const addPet = useCallback((pet: Pet) => {
-    setPets((prev) => [...prev, pet]);
+    setPets((prev) => [...prev.filter((current) => current.id !== pet.id), pet]);
     setSelectedPetId(pet.id);
   }, []);
 

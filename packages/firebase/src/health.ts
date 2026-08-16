@@ -10,7 +10,7 @@ import type {
   HealthFlag,
 } from '@furr/core';
 
-const IS_DEV_BYPASS = typeof process !== 'undefined' && !process.env?.EXPO_PUBLIC_FIREBASE_API_KEY;
+const IS_DEV_BYPASS = typeof process !== 'undefined' && !process.env?.EXPO_PUBLIC_FIREBASE_API_KEY && !process.env?.NEXT_PUBLIC_FIREBASE_API_KEY;
 
 // ── Dev-bypass in-memory stores ───────────────────────────────
 
@@ -23,8 +23,8 @@ function devId(): string {
 
 // ── Firestore paths ───────────────────────────────────────────
 
-const vacPath = (uid: string, petId: string) => `ownerPets/${uid}/pets/${petId}/vaccinations`;
-const medPath = (uid: string, petId: string) => `ownerPets/${uid}/pets/${petId}/medications`;
+const vacPath = (uid: string, petId: string) => `users/${uid}/pets/${petId}/vaccinations`;
+const medPath = (uid: string, petId: string) => `users/${uid}/pets/${petId}/medications`;
 
 // ─────────────────────────────────────────────────────────────
 //  Vaccinations
@@ -39,21 +39,35 @@ export function subscribeToVaccinations(
     onUpdate(devVaccinations.filter((v) => v.petId === petId && !v.isArchived));
     return () => {};
   }
+
+  // Capture the real unsubscribe so it can be called on cleanup.
+  let unsubscribe: (() => void) | undefined;
+  let active = true;
+
   void (async () => {
-    const { getFirestore, collection, query, where, orderBy, onSnapshot } = await import(
-      'firebase/firestore'
-    );
-    const db = getFirestore();
-    const q = query(
-      collection(db, vacPath(ownerUid, petId)),
-      where('isArchived', '==', false),
-      orderBy('administeredOn', 'desc'),
-    );
-    return onSnapshot(q, (snap) => {
-      onUpdate(snap.docs.map((d) => d.data() as VaccinationRecord));
-    });
+    try {
+      const { getFirestore, collection, query, where, orderBy, onSnapshot } = await import(
+        'firebase/firestore'
+      );
+      const db = getFirestore();
+      const q = query(
+        collection(db, vacPath(ownerUid, petId)),
+        where('isArchived', '==', false),
+        orderBy('administeredOn', 'desc'),
+      );
+      unsubscribe = onSnapshot(q, (snap) => {
+        onUpdate(snap.docs.map((d) => d.data() as VaccinationRecord));
+      });
+    } catch (err) {
+      console.error('[furr/firebase] subscribeToVaccinations error', err);
+      if (active) onUpdate([]);
+    }
   })();
-  return () => {};
+
+  return () => {
+    active = false;
+    unsubscribe?.();
+  };
 }
 
 export async function createVaccination(
@@ -107,21 +121,34 @@ export function subscribeToMedications(
     onUpdate(devMedications.filter((m) => m.petId === petId && m.isActive));
     return () => {};
   }
+
+  let unsubscribe: (() => void) | undefined;
+  let active = true;
+
   void (async () => {
-    const { getFirestore, collection, query, where, orderBy, onSnapshot } = await import(
-      'firebase/firestore'
-    );
-    const db = getFirestore();
-    const q = query(
-      collection(db, medPath(ownerUid, petId)),
-      where('isActive', '==', true),
-      orderBy('startAt', 'desc'),
-    );
-    return onSnapshot(q, (snap) => {
-      onUpdate(snap.docs.map((d) => d.data() as MedicationPlan));
-    });
+    try {
+      const { getFirestore, collection, query, where, orderBy, onSnapshot } = await import(
+        'firebase/firestore'
+      );
+      const db = getFirestore();
+      const q = query(
+        collection(db, medPath(ownerUid, petId)),
+        where('isActive', '==', true),
+        orderBy('startAt', 'desc'),
+      );
+      unsubscribe = onSnapshot(q, (snap) => {
+        onUpdate(snap.docs.map((d) => d.data() as MedicationPlan));
+      });
+    } catch (err) {
+      console.error('[furr/firebase] subscribeToMedications error', err);
+      if (active) onUpdate([]);
+    }
   })();
-  return () => {};
+
+  return () => {
+    active = false;
+    unsubscribe?.();
+  };
 }
 
 export async function createMedication(
@@ -158,7 +185,7 @@ export async function deactivateMedication(ownerUid: string, petId: string, medI
 // ─────────────────────────────────────────────────────────────
 
 let devWeights: WeightEntry[] = [];
-const wgtPath = (uid: string, petId: string) => `ownerPets/${uid}/pets/${petId}/weights`;
+const wgtPath = (uid: string, petId: string) => `users/${uid}/pets/${petId}/weights`;
 
 export function subscribeToWeightEntries(
   ownerUid: string,
@@ -169,13 +196,28 @@ export function subscribeToWeightEntries(
     onUpdate(devWeights.filter((w) => w.petId === petId));
     return () => {};
   }
+
+  let unsubscribe: (() => void) | undefined;
+  let active = true;
+
   void (async () => {
-    const { getFirestore, collection, query, orderBy, onSnapshot } = await import('firebase/firestore');
-    const db = getFirestore();
-    const q = query(collection(db, wgtPath(ownerUid, petId)), orderBy('measuredOn', 'desc'));
-    return onSnapshot(q, (snap) => { onUpdate(snap.docs.map((d) => d.data() as WeightEntry)); });
+    try {
+      const { getFirestore, collection, query, orderBy, onSnapshot } = await import('firebase/firestore');
+      const db = getFirestore();
+      const q = query(collection(db, wgtPath(ownerUid, petId)), orderBy('measuredOn', 'desc'));
+      unsubscribe = onSnapshot(q, (snap) => {
+        onUpdate(snap.docs.map((d) => d.data() as WeightEntry));
+      });
+    } catch (err) {
+      console.error('[furr/firebase] subscribeToWeightEntries error', err);
+      if (active) onUpdate([]);
+    }
   })();
-  return () => {};
+
+  return () => {
+    active = false;
+    unsubscribe?.();
+  };
 }
 
 export async function createWeightEntry(
@@ -211,7 +253,7 @@ export async function deleteWeightEntry(ownerUid: string, petId: string, entryId
 // ─────────────────────────────────────────────────────────────
 
 let devObservations: HealthObservation[] = [];
-const obsColPath = (uid: string, petId: string) => `ownerPets/${uid}/pets/${petId}/observations`;
+const obsColPath = (uid: string, petId: string) => `users/${uid}/pets/${petId}/observations`;
 
 export function subscribeToObservations(
   ownerUid: string,
@@ -222,12 +264,27 @@ export function subscribeToObservations(
     onUpdate(devObservations.filter((o) => o.petId === petId));
     return () => {};
   }
+
+  let unsubscribe: (() => void) | undefined;
+  let active = true;
+
   void (async () => {
-    const { getFirestore, collection, query, orderBy, onSnapshot } = await import('firebase/firestore');
-    const q = query(collection(getFirestore(), obsColPath(ownerUid, petId)), orderBy('observedOn', 'desc'));
-    return onSnapshot(q, (snap) => { onUpdate(snap.docs.map((d) => d.data() as HealthObservation)); });
+    try {
+      const { getFirestore, collection, query, orderBy, onSnapshot } = await import('firebase/firestore');
+      const q = query(collection(getFirestore(), obsColPath(ownerUid, petId)), orderBy('observedOn', 'desc'));
+      unsubscribe = onSnapshot(q, (snap) => {
+        onUpdate(snap.docs.map((d) => d.data() as HealthObservation));
+      });
+    } catch (err) {
+      console.error('[furr/firebase] subscribeToObservations error', err);
+      if (active) onUpdate([]);
+    }
   })();
-  return () => {};
+
+  return () => {
+    active = false;
+    unsubscribe?.();
+  };
 }
 
 export async function createObservation(
@@ -236,9 +293,28 @@ export async function createObservation(
   input: Omit<HealthObservation, 'id' | 'petId' | 'ownerUid' | 'createdAt' | 'updatedAt' | 'createdByUid' | 'isArchived'>,
 ): Promise<HealthObservation> {
   const now = new Date().toISOString();
+
+  if (IS_DEV_BYPASS) {
+    const obs: HealthObservation = {
+      ...input,
+      id: devId(),
+      petId,
+      ownerUid,
+      createdByUid: ownerUid,
+      isArchived: false,
+      createdAt: now,
+      updatedAt: now,
+    };
+    devObservations = [obs, ...devObservations];
+    return obs;
+  }
+
+  // In production: get the Firestore ref first so the ID is correct from the start.
+  const { getFirestore, collection, doc, setDoc, serverTimestamp } = await import('firebase/firestore');
+  const ref = doc(collection(getFirestore(), obsColPath(ownerUid, petId)));
   const obs: HealthObservation = {
     ...input,
-    id: devId(),
+    id: ref.id,
     petId,
     ownerUid,
     createdByUid: ownerUid,
@@ -246,15 +322,8 @@ export async function createObservation(
     createdAt: now,
     updatedAt: now,
   };
-
-  if (IS_DEV_BYPASS) {
-    devObservations = [obs, ...devObservations];
-    return obs;
-  }
-  const { getFirestore, collection, doc, setDoc, serverTimestamp } = await import('firebase/firestore');
-  const ref = doc(collection(getFirestore(), obsColPath(ownerUid, petId)));
-  await setDoc(ref, { ...obs, id: ref.id, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
-  return { ...obs, id: ref.id };
+  await setDoc(ref, { ...obs, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+  return obs;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -262,7 +331,7 @@ export async function createObservation(
 // ─────────────────────────────────────────────────────────────
 
 let devFlags: HealthFlag[] = [];
-const flagColPath = (uid: string, petId: string) => `ownerPets/${uid}/pets/${petId}/flags`;
+const flagColPath = (uid: string, petId: string) => `users/${uid}/pets/${petId}/flags`;
 
 export function subscribeToFlags(
   ownerUid: string,
@@ -273,12 +342,27 @@ export function subscribeToFlags(
     onUpdate(devFlags.filter((f) => f.petId === petId));
     return () => {};
   }
+
+  let unsubscribe: (() => void) | undefined;
+  let active = true;
+
   void (async () => {
-    const { getFirestore, collection, query, orderBy, onSnapshot } = await import('firebase/firestore');
-    const q = query(collection(getFirestore(), flagColPath(ownerUid, petId)), orderBy('createdAt', 'desc'));
-    return onSnapshot(q, (snap) => { onUpdate(snap.docs.map((d) => d.data() as HealthFlag)); });
+    try {
+      const { getFirestore, collection, query, orderBy, onSnapshot } = await import('firebase/firestore');
+      const q = query(collection(getFirestore(), flagColPath(ownerUid, petId)), orderBy('createdAt', 'desc'));
+      unsubscribe = onSnapshot(q, (snap) => {
+        onUpdate(snap.docs.map((d) => d.data() as HealthFlag));
+      });
+    } catch (err) {
+      console.error('[furr/firebase] subscribeToFlags error', err);
+      if (active) onUpdate([]);
+    }
   })();
-  return () => {};
+
+  return () => {
+    active = false;
+    unsubscribe?.();
+  };
 }
 
 export async function createFlag(
@@ -287,22 +371,33 @@ export async function createFlag(
   input: Omit<HealthFlag, 'id' | 'petId' | 'ownerUid' | 'provenance' | 'createdAt' | 'updatedAt'>,
 ): Promise<HealthFlag> {
   const now = new Date().toISOString();
+
+  if (IS_DEV_BYPASS) {
+    const flag: HealthFlag = {
+      ...input,
+      id: devId(),
+      petId,
+      ownerUid,
+      provenance: 'OWNER_ENTERED',
+      createdAt: now,
+      updatedAt: now,
+    };
+    devFlags = [flag, ...devFlags];
+    return flag;
+  }
+
+  // In production: get the Firestore ref first so the ID is correct from the start.
+  const { getFirestore, collection, doc, setDoc, serverTimestamp } = await import('firebase/firestore');
+  const ref = doc(collection(getFirestore(), flagColPath(ownerUid, petId)));
   const flag: HealthFlag = {
     ...input,
-    id: devId(),
+    id: ref.id,
     petId,
     ownerUid,
     provenance: 'OWNER_ENTERED',
     createdAt: now,
     updatedAt: now,
   };
-
-  if (IS_DEV_BYPASS) {
-    devFlags = [flag, ...devFlags];
-    return flag;
-  }
-  const { getFirestore, collection, doc, setDoc, serverTimestamp } = await import('firebase/firestore');
-  const ref = doc(collection(getFirestore(), flagColPath(ownerUid, petId)));
-  await setDoc(ref, { ...flag, id: ref.id, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
-  return { ...flag, id: ref.id };
+  await setDoc(ref, { ...flag, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+  return flag;
 }

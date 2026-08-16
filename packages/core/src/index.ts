@@ -64,7 +64,7 @@ export type RecordProvenance =
 export type PhoneAuthStep = 'idle' | 'sending' | 'sent' | 'verifying' | 'error';
 
 /**
- * Stored in Firestore at `ownerProfiles/{uid}`.
+ * Stored in Firestore at `users/{uid}`.
  * Only the minimum fields needed — no DOB, NIC, or full address in MVP.
  */
 export type OwnerProfile = {

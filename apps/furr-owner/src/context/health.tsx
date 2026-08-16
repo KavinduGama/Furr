@@ -51,7 +51,7 @@ const HealthContext = createContext<HealthContextValue | null>(null);
 // ─────────────────────────────────────────────────────────────
 
 export function HealthProvider({ children }: PropsWithChildren) {
-  const { firebaseUser } = useAuth();
+  const { firebaseUser, isPreviewSession } = useAuth();
   const { selectedPet } = usePets();
 
   const [vaccinations, setVaccinations] = useState<VaccinationRecord[]>([]);
@@ -74,6 +74,11 @@ export function HealthProvider({ children }: PropsWithChildren) {
       return;
     }
 
+    if (isPreviewSession) {
+      setIsLoading(false);
+      return;
+    }
+
     setIsLoading(true);
     let done = 0;
     const checkDone = () => { if (++done === 6) setIsLoading(false); };
@@ -86,22 +91,22 @@ export function HealthProvider({ children }: PropsWithChildren) {
     const unsubFlag = subscribeToFlags(firebaseUser.uid, selectedPet.id, (fs) => { setFlags(fs); checkDone(); });
 
     return () => { unsubVac(); unsubMed(); unsubWgt(); unsubDoc(); unsubObs(); unsubFlag(); };
-  }, [firebaseUser, selectedPet]);
+  }, [firebaseUser, selectedPet, isPreviewSession]);
 
   // ── Optimistic actions ────────────────────────────────────────
 
-  const addVaccination = useCallback((v: VaccinationRecord) => setVaccinations((p) => [v, ...p]), []);
+  const addVaccination = useCallback((v: VaccinationRecord) => setVaccinations((p) => [v, ...p.filter((x) => x.id !== v.id)]), []);
   const patchVaccination = useCallback((id: string, u: Partial<VaccinationRecord>) =>
     setVaccinations((p) => p.map((v) => v.id === id ? { ...v, ...u } : v)), []);
   const removeVaccination = useCallback((id: string) => setVaccinations((p) => p.filter((v) => v.id !== id)), []);
-  const addMedication = useCallback((m: MedicationPlan) => setMedications((p) => [m, ...p]), []);
+  const addMedication = useCallback((m: MedicationPlan) => setMedications((p) => [m, ...p.filter((x) => x.id !== m.id)]), []);
   const removeMedication = useCallback((id: string) => setMedications((p) => p.filter((m) => m.id !== id)), []);
-  const addWeight = useCallback((w: WeightEntry) => setWeights((p) => [w, ...p]), []);
+  const addWeight = useCallback((w: WeightEntry) => setWeights((p) => [w, ...p.filter((x) => x.id !== w.id)]), []);
   const removeWeight = useCallback((id: string) => setWeights((p) => p.filter((w) => w.id !== id)), []);
-  const addDocument = useCallback((d: PetDocument) => setDocuments((p) => [d, ...p]), []);
+  const addDocument = useCallback((d: PetDocument) => setDocuments((p) => [d, ...p.filter((x) => x.id !== d.id)]), []);
   const removeDocument = useCallback((id: string) => setDocuments((p) => p.filter((d) => d.id !== id)), []);
-  const addObservation = useCallback((o: HealthObservation) => setObservations((p) => [o, ...p]), []);
-  const addFlag = useCallback((f: HealthFlag) => setFlags((p) => [f, ...p]), []);
+  const addObservation = useCallback((o: HealthObservation) => setObservations((p) => [o, ...p.filter((x) => x.id !== o.id)]), []);
+  const addFlag = useCallback((f: HealthFlag) => setFlags((p) => [f, ...p.filter((x) => x.id !== f.id)]), []);
 
   const value = useMemo<HealthContextValue>(
     () => ({

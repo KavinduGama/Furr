@@ -7,24 +7,19 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import type { ReminderType } from '@furr/core';
-import { createReminder, requestNotificationPermissions } from '@furr/firebase';
-import { Button, colors, radius, space } from '@furr/ui';
+import { createReminder, requestNotificationPermissions } from '@furr/firebase/src/reminders';
+import { Button, TextInput, colors, radius, space } from '@furr/ui';
 import { useAuth } from '@/src/context/auth';
 import { usePets } from '@/src/context/pets';
 
-// ─────────────────────────────────────────────────────────────
-//  Add Reminder screen  (REM-001)
-// ─────────────────────────────────────────────────────────────
-
 const TYPES: { key: ReminderType; label: string; icon: string; description: string }[] = [
-  { key: 'vaccination_due', label: 'Vaccination due', icon: 'shield-checkmark', description: 'Remind when a vaccine is next due' },
-  { key: 'medication_dose', label: 'Medication dose', icon: 'medical', description: 'Remind to give a medication' },
-  { key: 'follow_up', label: 'Follow-up visit', icon: 'calendar', description: 'Vet or specialist appointment' },
-  { key: 'manual', label: 'Custom reminder', icon: 'notifications', description: 'Grooming, check-up, or anything else' },
+  { key: 'vaccination_due', label: 'Vaccination', icon: 'shield-checkmark', description: 'Remind when a vaccine is next due' },
+  { key: 'medication_dose', label: 'Medication', icon: 'medical', description: 'Remind to give a medication dose' },
+  { key: 'follow_up', label: 'Follow-up', icon: 'calendar', description: 'Vet or specialist appointment' },
+  { key: 'manual', label: 'Custom', icon: 'notifications', description: 'Grooming, check-up, or anything else' },
 ];
 
 const TYPE_COLORS: Record<ReminderType, string> = {
@@ -34,10 +29,15 @@ const TYPE_COLORS: Record<ReminderType, string> = {
   manual: '#2D8EC8',
 };
 
-function todayAtNoon(): string {
+function toLocalInputValue(date: Date): string {
+  const pad = (value: number) => String(value).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+function initialReminderTime(): string {
   const d = new Date();
-  d.setHours(12, 0, 0, 0);
-  return d.toISOString().slice(0, 16); // YYYY-MM-DDTHH:MM
+  d.setMinutes(d.getMinutes() + 30, 0, 0);
+  return toLocalInputValue(d);
 }
 
 export default function AddReminderScreen() {
@@ -47,7 +47,7 @@ export default function AddReminderScreen() {
   const [type, setType] = useState<ReminderType>('manual');
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
-  const [scheduledAt, setScheduledAt] = useState(todayAtNoon());
+  const [scheduledAt, setScheduledAt] = useState(initialReminderTime());
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
 
@@ -58,6 +58,8 @@ export default function AddReminderScreen() {
       e.scheduledAt = 'Date and time is required.';
     } else if (isNaN(new Date(scheduledAt).getTime())) {
       e.scheduledAt = 'Enter a valid date/time (YYYY-MM-DDTHH:MM).';
+    } else if (new Date(scheduledAt) <= new Date()) {
+      e.scheduledAt = 'Choose a time in the future.';
     }
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -67,7 +69,6 @@ export default function AddReminderScreen() {
     if (!validate() || !firebaseUser || !selectedPet) return;
     setLoading(true);
 
-    // Request notification permissions first
     const granted = await requestNotificationPermissions();
     if (!granted) {
       Alert.alert(
@@ -92,142 +93,131 @@ export default function AddReminderScreen() {
   };
 
   return (
-    <ScrollView
-      style={styles.scroll}
-      contentContainerStyle={styles.content}
-      keyboardShouldPersistTaps="handled"
-      showsVerticalScrollIndicator={false}
-    >
-      {/* Header */}
+    <ScrollView style={styles.scroll} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+      
       <View style={styles.topBar}>
-        <Pressable accessibilityRole="button" onPress={() => router.back()} style={styles.cancel}>
-          <Text style={styles.cancelText}>Cancel</Text>
+        <Pressable accessibilityRole="button" onPress={() => router.back()} style={styles.backBtn}>
+          <Ionicons name="arrow-back" size={24} color={colors.ink} />
         </Pressable>
-        <Text style={styles.heading}>Add reminder</Text>
-        <View style={{ width: 60 }} />
+        <View style={{ width: 44 }} />
+      </View>
+
+      <View style={styles.header}>
+        <Text style={styles.eyebrow}>REMINDERS</Text>
+        <Text style={styles.title}>New Alert</Text>
       </View>
 
       {selectedPet && (
         <View style={styles.petBadge}>
-          <Ionicons name="paw" size={13} color={colors.brand} />
+          <Ionicons name="paw" size={16} color={colors.brand} />
           <Text style={styles.petBadgeText}>For {selectedPet.name}</Text>
         </View>
       )}
 
-      {/* Type picker */}
-      <View style={styles.section}>
-        <Text style={styles.label}>Reminder type</Text>
-        <View style={styles.typeGrid}>
-          {TYPES.map((t) => {
-            const col = TYPE_COLORS[t.key];
-            const selected = type === t.key;
-            return (
-              <Pressable
-                key={t.key}
-                accessibilityRole="radio"
-                accessibilityState={{ selected }}
-                style={[styles.typeCard, selected && { borderColor: col, backgroundColor: `${col}10` }]}
-                onPress={() => setType(t.key)}
-              >
-                <Ionicons name={t.icon as never} size={20} color={selected ? col : colors.muted} />
-                <Text style={[styles.typeLabel, selected && { color: col }]}>{t.label}</Text>
-                <Text style={styles.typeSub}>{t.description}</Text>
-              </Pressable>
-            );
-          })}
+      <View style={styles.sectionContainer}>
+        <View style={styles.section}>
+          <Text style={styles.label}>Reminder type</Text>
+          <View style={styles.typeGrid}>
+            {TYPES.map((t) => {
+              const col = TYPE_COLORS[t.key];
+              const selected = type === t.key;
+              return (
+                <Pressable
+                  key={t.key}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected }}
+                  style={[styles.typeCard, selected && { borderColor: col, backgroundColor: `${col}10` }]}
+                  onPress={() => setType(t.key)}
+                >
+                  <View style={[styles.iconWrap, selected && { backgroundColor: col }]}>
+                     <Ionicons name={t.icon as never} size={20} color={selected ? '#fff' : colors.muted} />
+                  </View>
+                  <Text style={[styles.typeLabel, selected && { color: col }]}>{t.label}</Text>
+                  <Text style={styles.typeSub}>{t.description}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.label}>Title <Text style={styles.required}>*</Text></Text>
+          <TextInput
+            placeholder="e.g. Rabies booster due"
+            value={title}
+            onChangeText={(t) => { setTitle(t); setErrors((e) => ({ ...e, title: '' })); }}
+            error={errors.title}
+          />
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.label}>Notes (shown in notification)</Text>
+          <TextInput
+            placeholder="Optional detail shown in the notification…"
+            value={body}
+            onChangeText={setBody}
+            multiline
+            numberOfLines={2}
+            style={{ minHeight: 80, textAlignVertical: 'top' }}
+          />
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.label}>When <Text style={styles.required}>*</Text></Text>
+          <TextInput
+            placeholder="YYYY-MM-DDTHH:MM  e.g. 2026-09-15T09:00"
+            value={scheduledAt}
+            onChangeText={(t) => { setScheduledAt(t); setErrors((e) => ({ ...e, scheduledAt: '' })); }}
+            keyboardType="numbers-and-punctuation"
+            error={errors.scheduledAt}
+            hint="Date and time in 24-hour format"
+          />
+        </View>
+
+        <View style={styles.notifNote}>
+          <Ionicons name="notifications" size={20} color={colors.brand} />
+          <Text style={styles.notifNoteText}>
+            Furr will ask for notification permission when you save. You can always adjust in Settings.
+          </Text>
         </View>
       </View>
 
-      {/* Title */}
-      <View style={styles.section}>
-        <Text style={styles.label}>Title <Text style={styles.required}>*</Text></Text>
-        <TextInput
-          style={[styles.input, !!errors.title && styles.inputError]}
-          placeholder="e.g. Rabies booster due"
-          placeholderTextColor={colors.muted}
-          value={title}
-          onChangeText={(t) => { setTitle(t); setErrors((e) => ({ ...e, title: '' })); }}
-          maxLength={80}
-          accessibilityLabel="Reminder title"
-        />
-        {!!errors.title && <Text style={styles.error}>{errors.title}</Text>}
+      <View style={styles.footer}>
+        <Button label={loading ? 'Saving…' : 'Set reminder'} loading={loading} disabled={!title.trim() || !scheduledAt} onPress={handleSave} />
       </View>
-
-      {/* Body */}
-      <View style={styles.section}>
-        <Text style={styles.label}>Notes (shown in notification)</Text>
-        <TextInput
-          style={[styles.input, styles.textarea]}
-          placeholder="Optional detail shown in the notification…"
-          placeholderTextColor={colors.muted}
-          value={body}
-          onChangeText={setBody}
-          multiline
-          numberOfLines={2}
-          maxLength={200}
-          accessibilityLabel="Reminder body"
-        />
-      </View>
-
-      {/* Date + time */}
-      <View style={styles.section}>
-        <Text style={styles.label}>When <Text style={styles.required}>*</Text></Text>
-        <TextInput
-          style={[styles.input, !!errors.scheduledAt && styles.inputError]}
-          placeholder="YYYY-MM-DDTHH:MM  e.g. 2026-09-15T09:00"
-          placeholderTextColor={colors.muted}
-          value={scheduledAt}
-          onChangeText={(t) => { setScheduledAt(t); setErrors((e) => ({ ...e, scheduledAt: '' })); }}
-          keyboardType="numbers-and-punctuation"
-          maxLength={16}
-          accessibilityLabel="Date and time"
-        />
-        {!!errors.scheduledAt
-          ? <Text style={styles.error}>{errors.scheduledAt}</Text>
-          : <Text style={styles.hint}>Date and time in 24-hour format</Text>}
-      </View>
-
-      <View style={styles.notifNote}>
-        <Ionicons name="notifications-outline" size={14} color={colors.muted} />
-        <Text style={styles.notifNoteText}>
-          Furr will ask for notification permission when you save. You can always adjust in Settings.
-        </Text>
-      </View>
-
-      <Button
-        label={loading ? 'Saving…' : 'Set reminder'}
-        loading={loading}
-        disabled={!title.trim() || !scheduledAt}
-        onPress={handleSave}
-      />
-      <View style={{ height: 32 }} />
+      
+      <View style={{ height: 48 }} />
     </ScrollView>
   );
 }
 
-// ── Styles ─────────────────────────────────────────────────────
-
 const styles = StyleSheet.create({
   scroll: { flex: 1, backgroundColor: colors.canvas },
-  content: { padding: space.md, gap: space.md, paddingBottom: 40 },
-  topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 8 },
-  cancel: { padding: 4 },
-  cancelText: { color: colors.brand, fontSize: 15, fontWeight: '700' },
-  heading: { color: colors.ink, fontSize: 17, fontWeight: '900' },
-  petBadge: { flexDirection: 'row', alignItems: 'center', gap: 5, alignSelf: 'flex-start', backgroundColor: colors.mist, paddingHorizontal: 10, paddingVertical: 6, borderRadius: radius.pill },
-  petBadgeText: { color: colors.brand, fontSize: 12, fontWeight: '800' },
-  section: { gap: 7 },
-  label: { color: colors.ink, fontSize: 13, fontWeight: '800', letterSpacing: 0.2 },
+  content: { paddingHorizontal: space.lg, paddingTop: space.md, paddingBottom: 40 },
+
+  topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: space.md },
+  backBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: colors.line },
+
+  header: { marginBottom: space.md },
+  eyebrow: { color: colors.brand, fontWeight: '900', fontSize: 11, letterSpacing: 1.5 },
+  title: { color: colors.ink, fontSize: 34, fontWeight: '900', letterSpacing: -1, marginTop: 6 },
+  
+  petBadge: { flexDirection: 'row', alignItems: 'center', gap: 8, alignSelf: 'flex-start', backgroundColor: colors.mist, paddingHorizontal: 14, paddingVertical: 8, borderRadius: radius.pill, marginBottom: space.lg },
+  petBadgeText: { color: colors.brand, fontSize: 14, fontWeight: '800' },
+
+  sectionContainer: { gap: space.xl, marginTop: space.sm },
+  section: { gap: 10 },
+  label: { color: colors.ink, fontSize: 15, fontWeight: '800', letterSpacing: 0.2 },
   required: { color: colors.danger },
-  typeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  typeCard: { width: '47%', backgroundColor: colors.surface, borderRadius: radius.md, padding: 13, gap: 5, borderWidth: 1.5, borderColor: colors.line },
-  typeLabel: { color: colors.ink, fontSize: 13, fontWeight: '900' },
-  typeSub: { color: colors.muted, fontSize: 11, lineHeight: 15 },
-  input: { minHeight: 52, borderRadius: radius.md, borderWidth: 1.5, borderColor: colors.line, backgroundColor: colors.surface, paddingHorizontal: 14, fontSize: 15, color: colors.ink, fontWeight: '600' },
-  inputError: { borderColor: colors.danger },
-  textarea: { minHeight: 72, paddingTop: 14, textAlignVertical: 'top' },
-  error: { color: colors.danger, fontSize: 12, fontWeight: '700' },
-  hint: { color: colors.muted, fontSize: 11 },
-  notifNote: { flexDirection: 'row', gap: 7, alignItems: 'flex-start', backgroundColor: colors.pearl, padding: 11, borderRadius: radius.md },
-  notifNoteText: { color: colors.muted, fontSize: 11, lineHeight: 16, flex: 1 },
+
+  typeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  typeCard: { width: '48%', backgroundColor: colors.surface, borderRadius: radius.xl, padding: 16, gap: 8, borderWidth: 1.5, borderColor: colors.line },
+  iconWrap: { width: 36, height: 36, borderRadius: 12, backgroundColor: colors.mist, alignItems: 'center', justifyContent: 'center' },
+  typeLabel: { color: colors.ink, fontSize: 15, fontWeight: '900' },
+  typeSub: { color: colors.muted, fontSize: 12, lineHeight: 16 },
+
+  notifNote: { flexDirection: 'row', gap: 12, alignItems: 'flex-start', backgroundColor: colors.surface, padding: 16, borderRadius: radius.xl, borderWidth: 1, borderColor: colors.line, shadowColor: colors.ink, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.02, shadowRadius: 8 },
+  notifNoteText: { color: colors.ink, fontSize: 14, lineHeight: 20, flex: 1, fontWeight: '600' },
+
+  footer: { marginTop: space.xxl },
 });

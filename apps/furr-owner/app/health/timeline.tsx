@@ -11,13 +11,8 @@ import {
 } from 'react-native';
 import { buildTimeline, type TimelineFilter, type TimelineItem, DOC_TYPE_LABELS } from '@furr/core';
 import { colors, radius, space } from '@furr/ui';
-import { Screen } from '@/src/components/screen';
 import { usePets } from '@/src/context/pets';
 import { useHealth } from '@/src/context/health';
-
-// ─────────────────────────────────────────────────────────────
-//  Health Timeline screen  (HLT-004)
-// ─────────────────────────────────────────────────────────────
 
 const FILTER_OPTIONS: { key: TimelineFilter; label: string; icon: string }[] = [
   { key: 'all', label: 'All', icon: 'apps' },
@@ -45,7 +40,7 @@ function TimelineRow({ item }: { item: TimelineItem }) {
       return (
         <View style={styles.row}>
           <View style={[styles.iconWrap, { backgroundColor: colors.mist }]}>
-            <Ionicons name="shield-checkmark" size={17} color={colors.brand} />
+            <Ionicons name="shield-checkmark" size={20} color={colors.brand} />
           </View>
           <View style={styles.rowBody}>
             <View style={styles.rowTitleRow}>
@@ -66,7 +61,7 @@ function TimelineRow({ item }: { item: TimelineItem }) {
       return (
         <View style={styles.row}>
           <View style={[styles.iconWrap, { backgroundColor: colors.warm }]}>
-            <Ionicons name="medical" size={17} color={colors.accent} />
+            <Ionicons name="medical" size={20} color={colors.accent} />
           </View>
           <View style={styles.rowBody}>
             <View style={styles.rowTitleRow}>
@@ -86,7 +81,7 @@ function TimelineRow({ item }: { item: TimelineItem }) {
       return (
         <View style={styles.row}>
           <View style={[styles.iconWrap, { backgroundColor: '#F0FAFF' }]}>
-            <Ionicons name="scale" size={17} color="#2D8EC8" />
+            <Ionicons name="scale" size={20} color="#2D8EC8" />
           </View>
           <View style={styles.rowBody}>
             <View style={styles.rowTitleRow}>
@@ -106,7 +101,7 @@ function TimelineRow({ item }: { item: TimelineItem }) {
       return (
         <View style={styles.row}>
           <View style={[styles.iconWrap, { backgroundColor: colors.pearl }]}>
-            <Ionicons name="eye" size={17} color={colors.muted} />
+            <Ionicons name="eye" size={20} color={colors.muted} />
           </View>
           <View style={styles.rowBody}>
             <View style={styles.rowTitleRow}>
@@ -129,7 +124,7 @@ function TimelineRow({ item }: { item: TimelineItem }) {
       return (
         <View style={styles.row}>
           <View style={[styles.iconWrap, { backgroundColor: '#F3EEFF' }]}>
-            <Ionicons name={d.mimeType === 'application/pdf' ? 'document-text' : 'image'} size={17} color="#7C5CBF" />
+            <Ionicons name={d.mimeType === 'application/pdf' ? 'document-text' : 'image'} size={20} color="#7C5CBF" />
           </View>
           <View style={styles.rowBody}>
             <View style={styles.rowTitleRow}>
@@ -165,169 +160,144 @@ export default function TimelineScreen() {
 
   if (isLoading) {
     return (
-      <Screen>
+      <View style={styles.screen}>
         <View style={styles.loadingBox}>
           <ActivityIndicator color={colors.brand} size="large" />
         </View>
-      </Screen>
+      </View>
     );
   }
 
   return (
-    <Screen>
-      {/* Header */}
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.eyebrow}>HEALTH HISTORY</Text>
-          <Text style={styles.title}>Timeline</Text>
-          {selectedPet && <Text style={styles.sub}>{selectedPet.name} · {allItems.length} record{allItems.length !== 1 ? 's' : ''}</Text>}
-        </View>
-        {/* Add weight shortcut */}
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Log weight"
-          style={styles.addWeightBtn}
-          onPress={() => router.push('/health/add-weight' as never)}
-        >
-          <Ionicons name="scale" size={16} color={colors.brand} />
-        </Pressable>
-      </View>
-
-      {/* Filter pills */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.filterBar}
-      >
-        {FILTER_OPTIONS.map((f) => (
-          <Pressable
-            key={f.key}
-            accessibilityRole="radio"
-            accessibilityState={{ selected: filter === f.key }}
-            style={[styles.filterPill, filter === f.key && styles.filterPillSelected]}
-            onPress={() => setFilter(f.key)}
-          >
-            <Ionicons
-              name={f.icon as never}
-              size={13}
-              color={filter === f.key ? '#fff' : colors.muted}
-            />
-            <Text style={[styles.filterText, filter === f.key && styles.filterTextSelected]}>
-              {f.label}
-            </Text>
-          </Pressable>
-        ))}
-      </ScrollView>
-
-      {/* Empty state */}
-      {filtered.length === 0 && (
-        <View style={styles.empty}>
-          <Ionicons name="document-text-outline" size={36} color={colors.muted} />
-          <Text style={styles.emptyTitle}>
-            {filter === 'all' ? 'No records yet' : `No ${filter} yet`}
-          </Text>
-          <Text style={styles.emptyCopy}>
-            {filter === 'all'
-              ? 'Add a vaccination, medication, or weight entry to start building the health record.'
-              : `Tap the Care Centre tab to add ${filter}.`}
-          </Text>
-          {filter === 'all' && (
-            <View style={styles.emptyActions}>
-              <Pressable
-                accessibilityRole="button"
-                style={styles.emptyAction}
-                onPress={() => router.push('/health/add-vaccination' as never)}
-              >
-                <Ionicons name="shield-checkmark" size={15} color={colors.brand} />
-                <Text style={styles.emptyActionText}>Vaccination</Text>
-              </Pressable>
-              <Pressable
-                accessibilityRole="button"
-                style={styles.emptyAction}
-                onPress={() => router.push('/health/add-medication' as never)}
-              >
-                <Ionicons name="medical" size={15} color={colors.accent} />
-                <Text style={styles.emptyActionText}>Medication</Text>
-              </Pressable>
-              <Pressable
-                accessibilityRole="button"
-                style={styles.emptyAction}
-                onPress={() => router.push('/health/add-weight' as never)}
-              >
-                <Ionicons name="scale" size={15} color="#2D8EC8" />
-                <Text style={styles.emptyActionText}>Weight</Text>
-              </Pressable>
-            </View>
-          )}
-        </View>
-      )}
-
-      {/* Timeline list */}
-      {filtered.map((item, idx) => {
-        const key = item.kind === 'vaccination' ? item.record.id
-          : item.kind === 'medication' ? item.plan.id
-          : item.kind === 'weight' ? item.entry.id
-          : item.kind === 'document' ? item.document.id
-          : item.observation.id;
-
-        // Date divider
-        const prevDate = idx > 0 ? filtered[idx - 1].date : null;
-        const showDate = prevDate !== item.date;
-
-        return (
-          <View key={key}>
-            {showDate && (
-              <View style={styles.dateDivider}>
-                <View style={styles.dateLine} />
-                <Text style={styles.dateLabel}>{item.date}</Text>
-                <View style={styles.dateLine} />
-              </View>
-            )}
-            <TimelineRow item={item} />
+    <View style={styles.screen}>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        
+        {/* Header */}
+        <View style={styles.header}>
+          <View>
+            <Text style={styles.eyebrow}>HEALTH HISTORY</Text>
+            <Text style={styles.title}>Timeline</Text>
+            {selectedPet && <Text style={styles.sub}>{selectedPet.name} · {allItems.length} record{allItems.length !== 1 ? 's' : ''}</Text>}
           </View>
-        );
-      })}
+          <Pressable
+            accessibilityRole="button"
+            style={styles.addWeightBtn}
+            onPress={() => router.push('/health/add-weight' as never)}
+          >
+            <Ionicons name="scale" size={20} color="#fff" />
+          </Pressable>
+        </View>
 
-      <View style={{ height: 24 }} />
-    </Screen>
+        {/* Filter pills */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filterBar}
+        >
+          {FILTER_OPTIONS.map((f) => (
+            <Pressable
+              key={f.key}
+              accessibilityRole="radio"
+              accessibilityState={{ selected: filter === f.key }}
+              style={[styles.filterPill, filter === f.key && styles.filterPillSelected]}
+              onPress={() => setFilter(f.key)}
+            >
+              <Ionicons
+                name={f.icon as never}
+                size={16}
+                color={filter === f.key ? '#fff' : colors.muted}
+              />
+              <Text style={[styles.filterText, filter === f.key && styles.filterTextSelected]}>
+                {f.label}
+              </Text>
+            </Pressable>
+          ))}
+        </ScrollView>
+
+        {/* Empty state */}
+        {filtered.length === 0 && (
+          <View style={styles.empty}>
+            <View style={styles.emptyIconWrap}>
+              <Ionicons name="time" size={32} color={colors.brand} />
+            </View>
+            <Text style={styles.emptyTitle}>
+              {filter === 'all' ? 'No records yet' : `No ${filter} yet`}
+            </Text>
+            <Text style={styles.emptyCopy}>
+              {filter === 'all'
+                ? 'Add a vaccination, medication, or weight entry to start building the health record.'
+                : `Tap the Care Centre tab to add ${filter}.`}
+            </Text>
+          </View>
+        )}
+
+        {/* Timeline list */}
+        <View style={styles.timelineList}>
+          {filtered.map((item, idx) => {
+            const key = item.kind === 'vaccination' ? item.record.id
+              : item.kind === 'medication' ? item.plan.id
+              : item.kind === 'weight' ? item.entry.id
+              : item.kind === 'document' ? item.document.id
+              : item.observation.id;
+
+            const prevDate = idx > 0 ? filtered[idx - 1].date : null;
+            const showDate = prevDate !== item.date;
+
+            return (
+              <View key={key}>
+                {showDate && (
+                  <View style={styles.dateDivider}>
+                    <View style={styles.dateLine} />
+                    <Text style={styles.dateLabel}>{item.date}</Text>
+                    <View style={styles.dateLine} />
+                  </View>
+                )}
+                <TimelineRow item={item} />
+              </View>
+            );
+          })}
+        </View>
+
+        <View style={{ height: 48 }} />
+      </ScrollView>
+    </View>
   );
 }
 
-// ── Styles ─────────────────────────────────────────────────────
-
 const styles = StyleSheet.create({
+  screen: { flex: 1, backgroundColor: colors.canvas },
+  content: { paddingHorizontal: space.lg, paddingTop: space.md, paddingBottom: 40 },
   loadingBox: { flex: 1, alignItems: 'center', justifyContent: 'center', minHeight: 200 },
 
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
-  eyebrow: { color: colors.brand, fontWeight: '900', fontSize: 10, letterSpacing: 1.2 },
-  title: { color: colors.ink, fontSize: 31, lineHeight: 35, fontWeight: '900', letterSpacing: -1.2, marginTop: 4 },
-  sub: { color: colors.muted, fontSize: 12, marginTop: 4 },
-  addWeightBtn: { width: 44, height: 44, borderRadius: 22, borderWidth: 1.5, borderColor: colors.brand, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.mist },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: space.sm },
+  eyebrow: { color: colors.brand, fontWeight: '900', fontSize: 11, letterSpacing: 1.5 },
+  title: { color: colors.ink, fontSize: 32, lineHeight: 36, fontWeight: '900', letterSpacing: -1, marginTop: 4 },
+  sub: { color: colors.muted, fontSize: 14, marginTop: 4 },
+  addWeightBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#2D8EC8', alignItems: 'center', justifyContent: 'center', shadowColor: '#2D8EC8', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 3 },
 
-  filterBar: { flexDirection: 'row', gap: 8, paddingVertical: 4 },
-  filterPill: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 13, paddingVertical: 8, borderRadius: radius.pill, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line },
+  filterBar: { flexDirection: 'row', gap: 10, paddingVertical: space.md },
+  filterPill: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, paddingVertical: 10, borderRadius: radius.pill, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line },
   filterPillSelected: { backgroundColor: colors.brand, borderColor: colors.brand },
-  filterText: { color: colors.muted, fontSize: 12, fontWeight: '800' },
+  filterText: { color: colors.muted, fontSize: 13, fontWeight: '800' },
   filterTextSelected: { color: '#fff' },
 
-  empty: { alignItems: 'center', gap: 10, paddingVertical: 32 },
-  emptyTitle: { color: colors.ink, fontSize: 17, fontWeight: '900' },
-  emptyCopy: { color: colors.muted, fontSize: 13, lineHeight: 18, textAlign: 'center', maxWidth: 270 },
-  emptyActions: { flexDirection: 'row', gap: 10, marginTop: 8 },
-  emptyAction: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: colors.surface, paddingHorizontal: 14, paddingVertical: 10, borderRadius: radius.md, borderWidth: 1, borderColor: colors.line },
-  emptyActionText: { color: colors.ink, fontSize: 13, fontWeight: '800' },
+  empty: { alignItems: 'center', gap: 12, paddingVertical: 48, backgroundColor: colors.surface, borderRadius: radius.xl, borderWidth: 1, borderColor: colors.line, marginTop: space.md },
+  emptyIconWrap: { width: 64, height: 64, borderRadius: 32, backgroundColor: colors.mist, alignItems: 'center', justifyContent: 'center' },
+  emptyTitle: { color: colors.ink, fontSize: 18, fontWeight: '900' },
+  emptyCopy: { color: colors.muted, fontSize: 14, lineHeight: 20, textAlign: 'center', maxWidth: 270 },
 
-  dateDivider: { flexDirection: 'row', alignItems: 'center', gap: 10, marginVertical: 4 },
+  timelineList: { gap: space.sm },
+  dateDivider: { flexDirection: 'row', alignItems: 'center', gap: 12, marginVertical: space.md },
   dateLine: { flex: 1, height: 1, backgroundColor: colors.line },
-  dateLabel: { color: colors.muted, fontSize: 10, fontWeight: '900', letterSpacing: 0.8 },
+  dateLabel: { color: colors.muted, fontSize: 11, fontWeight: '900', letterSpacing: 1.5 },
 
-  row: { backgroundColor: colors.surface, borderRadius: radius.md, padding: 13, flexDirection: 'row', alignItems: 'flex-start', gap: 11, borderWidth: 1, borderColor: colors.line },
-  iconWrap: { width: 40, height: 40, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
-  rowBody: { flex: 1, gap: 2 },
-  rowTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 7, flexWrap: 'wrap' },
-  rowTitle: { color: colors.ink, fontSize: 14, fontWeight: '900' },
-  rowMeta: { color: colors.muted, fontSize: 12, lineHeight: 16 },
-  rowDue: { color: colors.accent, fontSize: 12, fontWeight: '800' },
-  badge: { paddingHorizontal: 7, paddingVertical: 3, borderRadius: radius.pill },
-  badgeText: { fontSize: 9, fontWeight: '900', letterSpacing: 0.3 },
+  row: { backgroundColor: colors.surface, borderRadius: radius.xl, padding: 16, flexDirection: 'row', alignItems: 'flex-start', gap: 14, shadowColor: colors.ink, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.02, shadowRadius: 8, elevation: 1 },
+  iconWrap: { width: 48, height: 48, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  rowBody: { flex: 1, gap: 4 },
+  rowTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
+  rowTitle: { color: colors.ink, fontSize: 16, fontWeight: '900' },
+  rowMeta: { color: colors.muted, fontSize: 13, lineHeight: 18 },
+  rowDue: { color: colors.accent, fontSize: 13, fontWeight: '800' },
+  badge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: radius.pill },
+  badgeText: { fontSize: 10, fontWeight: '900', letterSpacing: 0.4 },
 });

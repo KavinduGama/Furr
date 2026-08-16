@@ -4,53 +4,35 @@ import { useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { Pet } from '@furr/core';
 import { archivePet } from '@furr/firebase';
-import { colors, radius, space } from '@furr/ui';
-import { Screen } from '@/src/components/screen';
+import { colors, radius, space, Button } from '@furr/ui';
 import { useAuth } from '@/src/context/auth';
 import { usePets } from '@/src/context/pets';
 import { useHealth } from '@/src/context/health';
 import { generateAndSharePdf } from '@/src/utils/pdf';
 
-// ─────────────────────────────────────────────────────────────
-//  Pet Detail screen  (PET-002/003/004)
-//  Shows the selected pet's profile and health timeline.
-// ─────────────────────────────────────────────────────────────
-
-function petMetaLine(pet: Pet): string {
-  const parts: string[] = [];
-  if (pet.breed) parts.push(pet.breed);
-  if (pet.sex && pet.sex !== 'unknown') parts.push(pet.sex.charAt(0).toUpperCase() + pet.sex.slice(1));
-  if (pet.birthDate) {
-    const months =
-      (new Date().getFullYear() - new Date(pet.birthDate).getFullYear()) * 12 +
-      (new Date().getMonth() - new Date(pet.birthDate).getMonth());
-    const years = Math.floor(months / 12);
-    if (years >= 1) parts.push(`${years} year${years !== 1 ? 's' : ''} old`);
-    else parts.push(`${months} month${months !== 1 ? 's' : ''} old`);
-  }
-  return parts.join(' · ');
-}
-
 function speciesEmoji(pet: Pet) {
   return pet.species === 'cat' ? '🐈' : '🐕';
 }
+
+type TabKey = 'Overview' | 'Records' | 'Growth' | 'More';
 
 export default function PetDetailScreen() {
   const { firebaseUser } = useAuth();
   const { selectedPet, removePet } = usePets();
   const { vaccinations, medications, flags } = useHealth();
   const [archiving, setArchiving] = useState(false);
+  const [activeTab, setActiveTab] = useState<TabKey>('Overview');
 
   if (!selectedPet) {
     return (
-      <Screen>
+      <View style={styles.screen}>
         <View style={styles.empty}>
           <Text style={styles.emptyText}>No pet selected.</Text>
           <Pressable onPress={() => router.back()} accessibilityRole="button">
             <Text style={styles.backLink}>Go back</Text>
           </Pressable>
         </View>
-      </Screen>
+      </View>
     );
   }
 
@@ -86,190 +68,191 @@ export default function PetDetailScreen() {
       <Stack.Screen
         options={{
           headerShown: true,
-          title: selectedPet.name,
+          title: '', // Custom title below
           headerStyle: { backgroundColor: colors.canvas },
           headerShadowVisible: false,
-          headerTitleStyle: { fontWeight: '900', color: colors.ink },
           headerLeft: () => (
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Back"
               onPress={() => router.back()}
-              style={{ paddingRight: 8 }}
+              style={styles.headerBtn}
             >
-              <Ionicons name="arrow-back" size={22} color={colors.ink} />
+              <Ionicons name="arrow-back" size={24} color={colors.ink} />
             </Pressable>
           ),
           headerRight: () => (
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Edit pet"
-              onPress={() => router.push('/pet/add' as never)}
-              style={{ paddingLeft: 8 }}
+              onPress={() => router.push({ pathname: '/pet/add' as never, params: { petId: selectedPet.id } })}
+              style={styles.headerBtn}
             >
-              <Text style={styles.editBtn}>Edit</Text>
+              <Ionicons name="create-outline" size={24} color={colors.ink} />
             </Pressable>
           ),
         }}
       />
       <ScrollView style={styles.scroll} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Identity card */}
-        <View style={styles.identity}>
+        
+        {/* Profile Header */}
+        <View style={styles.profileHeader}>
           <View style={styles.avatarWrap}>
             <Text style={styles.avatarEmoji}>{speciesEmoji(selectedPet)}</Text>
           </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.name}>{selectedPet.name}</Text>
-            <Text style={styles.meta}>{petMetaLine(selectedPet)}</Text>
-            {selectedPet.colour && (
-              <Text style={styles.meta}>Colour: {selectedPet.colour}</Text>
-            )}
-          </View>
+          <Text style={styles.name}>{selectedPet.name}</Text>
+          <Text style={styles.meta}>
+            {selectedPet.breed || 'Mixed Breed'} · {selectedPet.sex === 'male' ? 'Male' : selectedPet.sex === 'female' ? 'Female' : 'Unknown'}
+          </Text>
         </View>
 
-        {/* Quick stats */}
-        <View style={styles.statsRow}>
-          {selectedPet.microchipNumber && (
-            <View style={styles.statBox}>
-              <Text style={styles.statLabel}>MICROCHIP</Text>
-              <Text style={styles.statValue} numberOfLines={1}>{selectedPet.microchipNumber}</Text>
-            </View>
-          )}
-          {selectedPet.isNeutered !== undefined && selectedPet.isNeutered !== null && (
-            <View style={styles.statBox}>
-              <Text style={styles.statLabel}>NEUTERED</Text>
-              <Text style={styles.statValue}>{selectedPet.isNeutered ? 'Yes' : 'No'}</Text>
-            </View>
-          )}
-          <View style={[styles.statBox, { flex: 1 }]}>
-            <Text style={styles.statLabel}>STATUS</Text>
-            <Text style={[styles.statValue, { color: colors.success }]}>Active</Text>
-          </View>
-        </View>
-
-        {/* Note */}
-        {selectedPet.generalNote && (
-          <View style={styles.noteBox}>
-            <Text style={styles.noteLabel}>NOTE</Text>
-            <Text style={styles.noteText}>{selectedPet.generalNote}</Text>
-          </View>
-        )}
-
-        {/* Health Flags (Allergies/Conditions) */}
-        <View style={styles.flagsHeader}>
-          <Text style={styles.sectionEyebrow}>ALLERGIES & CONDITIONS</Text>
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => router.push('/health/add-flag' as never)}
-          >
-            <Text style={styles.seeAll}>+ Add</Text>
-          </Pressable>
-        </View>
-
-        {flags.length === 0 ? (
-          <View style={styles.emptyFlags}>
-            <Text style={styles.emptyFlagsText}>No recorded allergies or chronic conditions.</Text>
-          </View>
-        ) : (
-          <View style={styles.flagsList}>
-            {flags.map((flag) => (
-              <View key={flag.id} style={styles.flagCard}>
-                <View style={styles.flagTop}>
-                  <Ionicons
-                    name={flag.type === 'allergy' ? 'warning' : 'medkit'}
-                    size={16}
-                    color={flag.type === 'allergy' ? '#E65100' : colors.brand}
-                  />
-                  <Text style={styles.flagTitle}>{flag.title}</Text>
-                  <View style={[styles.flagStatus, flag.status === 'active' ? styles.flagStatusActive : undefined]}>
-                    <Text style={[styles.flagStatusText, flag.status === 'active' ? styles.flagStatusTextActive : undefined]}>
-                      {flag.status.toUpperCase()}
-                    </Text>
-                  </View>
-                </View>
-                {flag.notes && <Text style={styles.flagNotes}>{flag.notes}</Text>}
-                <Text style={styles.flagMeta}>
-                  {flag.provenance === 'VET_VERIFIED' ? 'Vet verified' : 'Owner entered'}
-                  {flag.startedOn ? ` · Since ${flag.startedOn}` : ''}
-                </Text>
-              </View>
+        {/* Custom Tabs */}
+        <View style={styles.tabsContainer}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsScroll}>
+            {(['Overview', 'Records', 'Growth', 'More'] as TabKey[]).map((tab) => (
+              <Pressable
+                key={tab}
+                style={[styles.tabItem, activeTab === tab && styles.tabItemActive]}
+                onPress={() => setActiveTab(tab)}
+              >
+                <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>{tab}</Text>
+                {activeTab === tab && <View style={styles.tabIndicator} />}
+              </Pressable>
             ))}
+          </ScrollView>
+        </View>
+
+        {/* Tab Content */}
+        {activeTab === 'Overview' && (
+          <View style={styles.tabContent}>
+            {/* Stats Row */}
+            <View style={styles.statsRow}>
+              <View style={styles.statBox}>
+                <Text style={styles.statLabel}>Weight</Text>
+                <Text style={styles.statValue}>28.4 kg</Text>
+                <Text style={styles.statSub}>Last updated</Text>
+                <Text style={styles.statSub}>Mar 10, 2026</Text>
+              </View>
+              <View style={styles.statBox}>
+                <Text style={styles.statLabel}>Height</Text>
+                <Text style={styles.statValue}>56 cm</Text>
+                <Text style={styles.statSub}>Last updated</Text>
+                <Text style={styles.statSub}>Mar 10, 2026</Text>
+              </View>
+            </View>
+
+            {/* Health Score */}
+            <View style={styles.healthScoreBox}>
+              <Text style={styles.statLabel}>Health Score</Text>
+              <View style={styles.scoreRow}>
+                <Text style={styles.scoreValue}>92<Text style={styles.scoreMax}>/100</Text></Text>
+                <View style={styles.scoreBadge}>
+                  <Text style={styles.scoreBadgeText}>Excellent</Text>
+                </View>
+              </View>
+            </View>
+
+            {/* Recent Activity */}
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Recent Activity</Text>
+              <Ionicons name="chevron-forward" size={16} color={colors.muted} />
+            </View>
+            
+            <View style={styles.timeline}>
+              <View style={styles.timelineItem}>
+                <View style={styles.timelineIcon}>
+                  <Ionicons name="shield-checkmark" size={14} color={colors.brand} />
+                </View>
+                <View style={styles.timelineContent}>
+                  <Text style={styles.timelineText}>Vaccination record added</Text>
+                  <Text style={styles.timelineDate}>Mar 10, 2026</Text>
+                </View>
+              </View>
+              <View style={styles.timelineLine} />
+              <View style={styles.timelineItem}>
+                <View style={styles.timelineIconSecondary}>
+                  <Ionicons name="time" size={14} color={colors.accent} />
+                </View>
+                <View style={styles.timelineContent}>
+                  <Text style={styles.timelineText}>Next reminder: Deworming</Text>
+                  <Text style={styles.timelineDate}>Mar 20, 2026</Text>
+                </View>
+              </View>
+            </View>
+
           </View>
         )}
 
-        {/* Health timeline */}
-        <View style={styles.timelineHeader}>
-          <Text style={styles.sectionEyebrow}>HEALTH TIMELINE</Text>
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => router.push('/health/add-vaccination' as never)}
-          >
-            <Text style={styles.seeAll}>Add record</Text>
-          </Pressable>
-        </View>
+        {activeTab === 'Records' && (
+          <View style={styles.tabContent}>
+            
+            {/* Quick Record Add Button */}
+            <View style={{marginBottom: space.lg}}>
+              <Button 
+                label="+ Add Record" 
+                variant="primary" 
+                onPress={() => router.push('/health/add-vaccination' as never)} 
+              />
+            </View>
 
-        {vaccinations.length === 0 && medications.length === 0 ? (
-          <View style={styles.emptyTimeline}>
-            <Ionicons name="document-text-outline" size={32} color={colors.muted} />
-            <Text style={styles.emptyTimelineTitle}>No records yet</Text>
-            <Text style={styles.emptyTimelineCopy}>
-              Add a vaccination, medication, or health observation to get started.
-            </Text>
-          </View>
-        ) : (
-          <View style={styles.recordSummary}>
-            {vaccinations.length > 0 && (
-              <View style={styles.recordSummaryRow}>
-                <Ionicons name="shield-checkmark" size={16} color={colors.brand} />
-                <Text style={styles.recordSummaryText}>
-                  {vaccinations.length} vaccination{vaccinations.length !== 1 ? 's' : ''}
-                </Text>
+            {/* Record List */}
+            {vaccinations.length === 0 && medications.length === 0 ? (
+              <View style={styles.emptyState}>
+                <Text style={styles.emptyText}>No records found.</Text>
+              </View>
+            ) : (
+              <View style={styles.recordList}>
+                {vaccinations.map(vac => (
+                  <View key={vac.id} style={styles.recordCard}>
+                    <View style={styles.recordIconWrap}>
+                       <Ionicons name="shield" size={20} color={colors.brand} />
+                    </View>
+                    <View style={styles.recordCardContent}>
+                      <Text style={styles.recordTitle}>{vac.vaccineType === 'Other' ? (vac.customVaccineName ?? 'Vaccine') : vac.vaccineType}</Text>
+                      <Text style={styles.recordDate}>{vac.administeredOn}</Text>
+                      <View style={styles.recordVerifiedRow}>
+                        <Ionicons name="checkmark-circle" size={14} color={colors.success} />
+                        <Text style={styles.recordVerifiedText}>Verified by Vet</Text>
+                      </View>
+                    </View>
+                    <Ionicons name="chevron-forward" size={20} color={colors.muted} />
+                  </View>
+                ))}
               </View>
             )}
-            {medications.length > 0 && (
-              <View style={styles.recordSummaryRow}>
-                <Ionicons name="medical" size={16} color={colors.accent} />
-                <Text style={styles.recordSummaryText}>
-                  {medications.length} active medication{medications.length !== 1 ? 's' : ''}
-                </Text>
-              </View>
-            )}
+
+            {/* Export PDF (SHR-003) */}
             <Pressable
               accessibilityRole="button"
-              style={styles.viewAllBtn}
-              onPress={() => router.push('/(tabs)/care' as never)}
+              style={styles.exportBtn}
+              onPress={() => generateAndSharePdf(selectedPet, flags, vaccinations, medications)}
             >
-              <Text style={styles.viewAllText}>View all in Care Centre →</Text>
+              <Ionicons name="document-text" size={18} color={colors.brand} />
+              <Text style={styles.exportBtnText}>Export Documents</Text>
             </Pressable>
+
           </View>
         )}
 
-        {/* Export PDF (SHR-003) */}
-        <Pressable
-          accessibilityRole="button"
-          style={styles.exportBtn}
-          onPress={() => {
-            if (selectedPet) {
-              generateAndSharePdf(selectedPet, flags, vaccinations, medications);
-            }
-          }}
-        >
-          <Ionicons name="document-text" size={16} color={colors.brand} />
-          <Text style={styles.exportBtnText}>Export health summary (PDF)</Text>
-        </Pressable>
+        {(activeTab === 'Growth' || activeTab === 'More') && (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyText}>This section is coming soon.</Text>
+            {activeTab === 'More' && (
+              <Pressable
+                accessibilityRole="button"
+                style={styles.archiveBtn}
+                onPress={handleArchive}
+                disabled={archiving}
+              >
+                <Ionicons name="archive-outline" size={16} color={colors.danger} />
+                <Text style={styles.archiveBtnText}>
+                  {archiving ? 'Archiving…' : `Archive ${selectedPet.name}`}
+                </Text>
+              </Pressable>
+            )}
+          </View>
+        )}
 
-        {/* Archive */}
-        <Pressable
-          accessibilityRole="button"
-          style={styles.archiveBtn}
-          onPress={handleArchive}
-          disabled={archiving}
-        >
-          <Ionicons name="archive-outline" size={16} color={colors.muted} />
-          <Text style={styles.archiveBtnText}>
-            {archiving ? 'Archiving…' : `Archive ${selectedPet.name}`}
-          </Text>
-        </Pressable>
       </ScrollView>
     </>
   );
@@ -278,94 +261,70 @@ export default function PetDetailScreen() {
 // ── Styles ────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
+  screen: { flex: 1, backgroundColor: colors.canvas },
   scroll: { flex: 1, backgroundColor: colors.canvas },
-  content: { padding: space.md, gap: space.md, paddingBottom: 48 },
+  content: { paddingBottom: 48 },
+  headerBtn: { paddingHorizontal: 16 },
 
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
-  emptyText: { color: colors.muted, fontSize: 15 },
+  emptyText: { color: colors.muted, fontSize: 16 },
   backLink: { color: colors.brand, fontWeight: '800' },
 
-  editBtn: { color: colors.brand, fontSize: 15, fontWeight: '800' },
+  profileHeader: { alignItems: 'center', paddingVertical: space.md },
+  avatarWrap: { width: 100, height: 100, borderRadius: 50, backgroundColor: colors.pearl, alignItems: 'center', justifyContent: 'center', marginBottom: space.sm, shadowColor: colors.ink, shadowOpacity: 0.1, shadowRadius: 15, shadowOffset: {width: 0, height: 8}, elevation: 4 },
+  avatarEmoji: { fontSize: 48 },
+  name: { color: colors.ink, fontSize: 28, fontWeight: '900', letterSpacing: -0.5 },
+  meta: { color: colors.muted, fontSize: 15, marginTop: 4 },
 
-  identity: {
-    backgroundColor: colors.surface,
-    padding: space.md,
-    borderRadius: radius.lg,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    borderWidth: 1.5,
-    borderColor: colors.line,
-  },
-  avatarWrap: { width: 72, height: 72, borderRadius: 24, backgroundColor: colors.pearl, alignItems: 'center', justifyContent: 'center' },
-  avatarEmoji: { fontSize: 36 },
-  name: { color: colors.ink, fontSize: 24, fontWeight: '900', letterSpacing: -0.6 },
-  meta: { color: colors.muted, fontSize: 13, marginTop: 3 },
+  tabsContainer: { borderBottomWidth: 1, borderBottomColor: colors.line, marginTop: space.sm },
+  tabsScroll: { paddingHorizontal: space.md },
+  tabItem: { paddingHorizontal: space.md, paddingVertical: space.sm, position: 'relative' },
+  tabItemActive: { },
+  tabText: { color: colors.muted, fontSize: 16, fontWeight: '600' },
+  tabTextActive: { color: colors.brand, fontWeight: '800' },
+  tabIndicator: { position: 'absolute', bottom: -1, left: space.md, right: space.md, height: 3, backgroundColor: colors.brand, borderTopLeftRadius: 3, borderTopRightRadius: 3 },
 
-  statsRow: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  statBox: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: colors.line,
-    minWidth: 90,
-  },
-  statLabel: { color: colors.muted, fontSize: 9, fontWeight: '900', letterSpacing: 1 },
-  statValue: { color: colors.ink, fontSize: 14, fontWeight: '900', marginTop: 5 },
+  tabContent: { padding: space.lg },
 
-  noteBox: {
-    backgroundColor: colors.warm,
-    borderRadius: radius.md,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: '#F0D89A',
-  },
-  noteLabel: { color: '#B8870F', fontSize: 9, fontWeight: '900', letterSpacing: 1 },
-  noteText: { color: colors.ink, fontSize: 14, lineHeight: 20, marginTop: 5 },
+  statsRow: { flexDirection: 'row', gap: space.md, marginBottom: space.md },
+  statBox: { flex: 1, backgroundColor: colors.surface, borderRadius: radius.xl, padding: space.lg, shadowColor: colors.ink, shadowOpacity: 0.04, shadowRadius: 12, shadowOffset: {width: 0, height: 4}, elevation: 2 },
+  statLabel: { color: colors.ink, fontSize: 16, fontWeight: '700', marginBottom: space.sm },
+  statValue: { color: colors.ink, fontSize: 24, fontWeight: '900', marginBottom: space.sm },
+  statSub: { color: colors.muted, fontSize: 12 },
+  
+  healthScoreBox: { backgroundColor: colors.surface, borderRadius: radius.xl, padding: space.lg, marginBottom: space.xl, shadowColor: colors.ink, shadowOpacity: 0.04, shadowRadius: 12, shadowOffset: {width: 0, height: 4}, elevation: 2 },
+  scoreRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: space.xs },
+  scoreValue: { color: colors.ink, fontSize: 32, fontWeight: '900', letterSpacing: -1 },
+  scoreMax: { color: colors.muted, fontSize: 16, fontWeight: '700' },
+  scoreBadge: { backgroundColor: colors.calm, paddingHorizontal: 10, paddingVertical: 4, borderRadius: radius.sm },
+  scoreBadgeText: { color: colors.success, fontSize: 12, fontWeight: '800' },
 
-  timelineHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  sectionEyebrow: { color: colors.muted, fontSize: 10, fontWeight: '900', letterSpacing: 1.2 },
-  seeAll: { color: colors.brand, fontSize: 12, fontWeight: '900' },
+  sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: space.sm },
+  sectionTitle: { color: colors.ink, fontSize: 18, fontWeight: '800' },
 
-  emptyTimeline: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    padding: 28,
-    alignItems: 'center',
-    gap: 8,
-    borderWidth: 1,
-    borderColor: colors.line,
-  },
-  emptyTimelineTitle: { color: colors.ink, fontSize: 15, fontWeight: '900' },
-  emptyTimelineCopy: { color: colors.muted, fontSize: 13, lineHeight: 18, textAlign: 'center', maxWidth: 260 },
+  timeline: { paddingLeft: space.xs, marginTop: space.sm },
+  timelineItem: { flexDirection: 'row', gap: space.md, alignItems: 'flex-start' },
+  timelineIcon: { width: 32, height: 32, borderRadius: 16, backgroundColor: colors.softBrand, alignItems: 'center', justifyContent: 'center', zIndex: 2 },
+  timelineIconSecondary: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#FFF7ED', alignItems: 'center', justifyContent: 'center', zIndex: 2 },
+  timelineContent: { flex: 1, paddingTop: 4, paddingBottom: space.md },
+  timelineText: { color: colors.ink, fontSize: 15, fontWeight: '700' },
+  timelineDate: { color: colors.muted, fontSize: 13, marginTop: 2 },
+  timelineLine: { position: 'absolute', left: 15, top: 32, bottom: 0, width: 2, backgroundColor: colors.line, zIndex: 1, height: 40 },
 
-  exportBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, paddingVertical: 14, marginTop: 10, backgroundColor: colors.mist, borderRadius: radius.md, borderWidth: 1, borderColor: colors.softBrand },
-  exportBtnText: { color: colors.brand, fontSize: 13, fontWeight: '800' },
+  recordList: { gap: space.md },
+  recordCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface, borderRadius: radius.xl, padding: space.md, shadowColor: colors.ink, shadowOpacity: 0.04, shadowRadius: 12, shadowOffset: {width: 0, height: 4}, elevation: 2 },
+  recordIconWrap: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.softBrand, alignItems: 'center', justifyContent: 'center', marginRight: space.md },
+  recordCardContent: { flex: 1 },
+  recordTitle: { color: colors.ink, fontSize: 16, fontWeight: '700' },
+  recordDate: { color: colors.muted, fontSize: 13, marginTop: 2, marginBottom: 4 },
+  recordVerifiedRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  recordVerifiedText: { color: colors.success, fontSize: 12, fontWeight: '700' },
 
-  archiveBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, paddingVertical: 14, marginTop: 10 },
-  archiveBtnText: { color: colors.danger, fontSize: 13, fontWeight: '800' },
+  exportBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 16, marginTop: space.xl, backgroundColor: colors.surface, borderRadius: radius.pill, borderWidth: 1, borderColor: colors.line },
+  exportBtnText: { color: colors.brand, fontSize: 16, fontWeight: '700' },
 
-  flagsHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 4 },
-  emptyFlags: { backgroundColor: colors.surface, padding: 16, borderRadius: radius.md, borderWidth: 1, borderColor: colors.line, borderStyle: 'dashed' },
-  emptyFlagsText: { color: colors.muted, fontSize: 13, textAlign: 'center' },
-  flagsList: { gap: 10 },
-  flagCard: { backgroundColor: colors.surface, padding: 14, borderRadius: radius.md, borderWidth: 1, borderColor: colors.line, gap: 6 },
-  flagTop: { flexDirection: 'row', alignItems: 'center', gap: 7 },
-  flagTitle: { flex: 1, color: colors.ink, fontSize: 14, fontWeight: '900' },
-  flagStatus: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: radius.sm, backgroundColor: colors.mist },
-  flagStatusActive: { backgroundColor: '#FFF0E5' },
-  flagStatusText: { fontSize: 9, fontWeight: '900', color: colors.muted, letterSpacing: 0.5 },
-  flagStatusTextActive: { color: '#E65100' },
-  flagNotes: { color: colors.muted, fontSize: 13, lineHeight: 18 },
-  flagMeta: { color: colors.muted, fontSize: 11, marginTop: 4 },
+  emptyState: { padding: space.xl, alignItems: 'center', justifyContent: 'center', gap: space.lg },
 
-  recordSummary: { backgroundColor: colors.surface, borderRadius: radius.lg, padding: 16, borderWidth: 1, borderColor: colors.line, gap: 10 },
-  recordSummaryRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  recordSummaryText: { color: colors.ink, fontSize: 14, fontWeight: '800' },
-  viewAllBtn: { marginTop: 4 },
-  viewAllText: { color: colors.brand, fontSize: 13, fontWeight: '900' },
+  archiveBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, paddingVertical: 14, marginTop: 20 },
+  archiveBtnText: { color: colors.danger, fontSize: 14, fontWeight: '700' },
 });

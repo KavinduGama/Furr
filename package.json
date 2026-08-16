@@ -5,6 +5,10 @@
   "packageManager": "pnpm@10.16.1",
   "scripts": {
     "owner": "pnpm --filter @furr/owner start",
+    "vet": "pnpm --filter @furr/vet start",
+    "admin": "pnpm --filter @furr/admin start",
+    "vet:dev": "pnpm --filter @furr/vet dev",
+    "admin:dev": "pnpm --filter @furr/admin dev",
     "typecheck": "pnpm -r --if-present typecheck",
     "lint": "pnpm -r --if-present lint"
   }

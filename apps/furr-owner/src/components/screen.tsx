@@ -8,5 +8,5 @@ export function Screen({ children }: PropsWithChildren) {
 
 const styles = StyleSheet.create({
   scroll: { flex: 1, backgroundColor: colors.canvas },
-  content: { padding: space.md, paddingBottom: 36, gap: space.md },
+  content: { paddingHorizontal: 20, paddingTop: 18, paddingBottom: 38, gap: space.lg },
 });

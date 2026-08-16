@@ -1,5 +1,4 @@
 import type { ProfessionalProfile, ProfessionalStatus } from '@furr/core';
-import { devId } from './pet';
 
 const IS_DEV_BYPASS = typeof process !== 'undefined' && !process.env?.NEXT_PUBLIC_FIREBASE_API_KEY && !process.env?.EXPO_PUBLIC_FIREBASE_API_KEY;
 

@@ -7,16 +7,18 @@
 // ─────────────────────────────────────────────────────────────
 
 import type { Reminder, ReminderType } from '@furr/core';
+import { Platform } from 'react-native';
 
-const IS_DEV_BYPASS = typeof process !== 'undefined' && !process.env?.EXPO_PUBLIC_FIREBASE_API_KEY;
+const IS_DEV_BYPASS = typeof process !== 'undefined' && !process.env?.EXPO_PUBLIC_FIREBASE_API_KEY && !process.env?.NEXT_PUBLIC_FIREBASE_API_KEY;
 
 let devReminders: Reminder[] = [];
+const ANDROID_CHANNEL_ID = 'pet-care';
 
 function devId(): string {
   return `rem-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 }
 
-const remPath = (uid: string, petId: string) => `ownerPets/${uid}/pets/${petId}/reminders`;
+const remPath = (uid: string, petId: string) => `users/${uid}/pets/${petId}/reminders`;
 
 // ─────────────────────────────────────────────────────────────
 //  Permission helpers
@@ -25,6 +27,15 @@ const remPath = (uid: string, petId: string) => `ownerPets/${uid}/pets/${petId}/
 export async function requestNotificationPermissions(): Promise<boolean> {
   try {
     const { default: Notifications } = await import('expo-notifications');
+    if (Platform.OS === 'android') {
+      await Notifications.setNotificationChannelAsync(ANDROID_CHANNEL_ID, {
+        name: 'Pet care reminders',
+        description: 'Medication, vaccination, and follow-up reminders',
+        importance: Notifications.AndroidImportance.HIGH,
+        vibrationPattern: [0, 250, 250, 250],
+        lightColor: '#006B78',
+      });
+    }
     const { status } = await Notifications.requestPermissionsAsync();
     return status === 'granted';
   } catch {
@@ -45,7 +56,7 @@ async function scheduleLocalNotification(
     const { default: Notifications } = await import('expo-notifications');
     const notifId = await Notifications.scheduleNotificationAsync({
       content: { title, body, sound: true },
-      trigger: { type: 'date' as never, date: scheduledAt },
+      trigger: { type: 'date' as never, date: scheduledAt, channelId: ANDROID_CHANNEL_ID } as never,
     });
     return notifId;
   } catch {
@@ -81,6 +92,9 @@ export async function createReminder(
 ): Promise<Reminder> {
   const now = new Date().toISOString();
   const scheduledDate = new Date(input.scheduledAt);
+  if (Number.isNaN(scheduledDate.getTime()) || scheduledDate <= new Date()) {
+    throw new Error('Reminders must be scheduled for a future date and time.');
+  }
 
   // Schedule local notification
   const notifId = scheduledDate > new Date()
@@ -141,7 +155,8 @@ export function subscribeToReminders(
 //  Complete / skip / cancel reminder
 // ─────────────────────────────────────────────────────────────
 
-export async function completeReminder(ownerUid: string, petId: string, remId: string): Promise<void> {
+export async function completeReminder(ownerUid: string, petId: string, remId: string, notifId?: string): Promise<void> {
+  if (notifId) await cancelLocalNotification(notifId);
   const now = new Date().toISOString();
   if (IS_DEV_BYPASS) {
     devReminders = devReminders.map((r) => r.id === remId ? { ...r, status: 'completed' as const, completedAt: now, updatedAt: now } : r);
@@ -151,7 +166,8 @@ export async function completeReminder(ownerUid: string, petId: string, remId: s
   await updateDoc(doc(getFirestore(), remPath(ownerUid, petId), remId), { status: 'completed', completedAt: now, updatedAt: serverTimestamp() });
 }
 
-export async function skipReminder(ownerUid: string, petId: string, remId: string, reason?: string): Promise<void> {
+export async function skipReminder(ownerUid: string, petId: string, remId: string, reason?: string, notifId?: string): Promise<void> {
+  if (notifId) await cancelLocalNotification(notifId);
   const now = new Date().toISOString();
   if (IS_DEV_BYPASS) {
     devReminders = devReminders.map((r) => r.id === remId ? { ...r, status: 'skipped' as const, skippedAt: now, skipReason: reason, updatedAt: now } : r);

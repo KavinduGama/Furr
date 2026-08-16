@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   StyleSheet,
   Text,
@@ -14,15 +14,29 @@ export interface TextInputProps extends RNTextInputProps {
   error?: string;
 }
 
-export function TextInput({ label, hint, error, style, ...rest }: TextInputProps) {
+export function TextInput({ label, hint, error, style, onFocus, onBlur, ...rest }: TextInputProps) {
   const hasError = !!error;
+  const [isFocused, setIsFocused] = useState(false);
 
   return (
     <View style={styles.wrapper}>
       {label && <Text style={styles.label}>{label}</Text>}
       <RNTextInput
-        style={[styles.input, hasError && styles.inputError, style]}
+        style={[
+          styles.input,
+          isFocused && styles.inputFocused,
+          hasError && styles.inputError,
+          style
+        ]}
         placeholderTextColor={colors.muted}
+        onFocus={(e) => {
+          setIsFocused(true);
+          onFocus?.(e);
+        }}
+        onBlur={(e) => {
+          setIsFocused(false);
+          onBlur?.(e);
+        }}
         {...rest}
       />
       {hasError && <Text style={styles.error}>{error}</Text>}
@@ -35,8 +49,8 @@ const styles = StyleSheet.create({
   wrapper: { gap: 6 },
   label: {
     color: colors.ink,
-    fontSize: 13,
-    fontWeight: '800',
+    fontSize: 14,
+    fontWeight: '600',
     letterSpacing: 0.2,
   },
   input: {
@@ -46,9 +60,13 @@ const styles = StyleSheet.create({
     borderColor: colors.line,
     backgroundColor: colors.surface,
     paddingHorizontal: 16,
-    fontSize: 17,
+    fontSize: 16,
     color: colors.ink,
-    fontWeight: '600',
+    fontWeight: '500',
+  },
+  inputFocused: {
+    borderColor: colors.brand,
+    backgroundColor: colors.surface,
   },
   inputError: {
     borderColor: colors.danger,
@@ -61,6 +79,6 @@ const styles = StyleSheet.create({
   error: {
     color: colors.danger,
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '600',
   },
 });

@@ -34,8 +34,9 @@ const styles = StyleSheet.create({
   scroll: { flex: 1 },
   content: {
     flexGrow: 1,
-    padding: space.md,
+    paddingHorizontal: 20,
+    paddingTop: 20,
     paddingBottom: 40,
-    gap: space.md,
+    gap: space.lg,
   },
 });

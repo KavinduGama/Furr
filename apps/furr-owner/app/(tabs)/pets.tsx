@@ -1,29 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { Pressable, StyleSheet, Text, View, ActivityIndicator } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { Pet } from '@furr/core';
-import { colors, radius, space } from '@furr/ui';
-import { Screen } from '@/src/components/screen';
+import { colors, radius, space, Button } from '@furr/ui';
 import { usePets } from '@/src/context/pets';
 
-// ─────────────────────────────────────────────────────────────
-//  Pets tab  (PET-001/002)
-// ─────────────────────────────────────────────────────────────
-
-function petAgeLabel(pet: Pet): string {
-  if (!pet.birthDate) return pet.breed ?? 'Dog or cat';
-  const born = new Date(pet.birthDate);
-  const now = new Date();
-  const months =
-    (now.getFullYear() - born.getFullYear()) * 12 + (now.getMonth() - born.getMonth());
-  if (months < 1) return 'Less than 1 month old';
-  if (months < 12) return `${months} month${months === 1 ? '' : 's'} old`;
-  const years = Math.floor(months / 12);
-  return `${years} year${years === 1 ? '' : 's'} old`;
-}
-
-function speciesEmoji(pet: Pet) {
-  return pet.species === 'cat' ? '🐈' : '🐕';
+function petDetail(pet: Pet) {
+  const kind = pet.species === 'cat' ? 'Cat' : 'Dog';
+  return pet.breed ? `${pet.breed} · ${kind}` : kind;
 }
 
 export default function PetsScreen() {
@@ -31,158 +15,127 @@ export default function PetsScreen() {
 
   if (isLoading) {
     return (
-      <Screen>
-        <View style={styles.loadingBox}>
+      <View style={styles.screen}>
+        <View style={styles.loading}>
           <ActivityIndicator color={colors.brand} size="large" />
         </View>
-      </Screen>
+      </View>
     );
   }
 
   return (
-    <Screen>
-      {/* Header */}
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.eyebrow}>YOUR FAMILY</Text>
-          <Text style={styles.title}>Your pets</Text>
-          <Text style={styles.copy}>Every little health detail, held close.</Text>
-        </View>
-        <Pressable
-          accessibilityLabel="Add a pet"
-          accessibilityRole="button"
-          style={styles.addBtn}
-          onPress={() => router.push('/pet/add' as never)}
-        >
-          <Ionicons name="add" color="#fff" size={24} />
-        </Pressable>
-      </View>
-
-      {/* Empty state */}
-      {pets.length === 0 && (
-        <Pressable
-          accessibilityRole="button"
-          style={styles.emptyCard}
-          onPress={() => router.push('/pet/add' as never)}
-        >
-          <View style={styles.emptyIcon}>
-            <Ionicons name="paw" size={28} color={colors.brand} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.emptyTitle}>Add your first pet</Text>
-            <Text style={styles.emptyCopy}>
-              Set up their health home in under 60 seconds.
-            </Text>
-          </View>
-          <Ionicons name="arrow-forward" size={18} color={colors.brand} />
-        </Pressable>
-      )}
-
-      {/* Pet cards */}
-      {pets.map((pet) => (
-        <Pressable
-          key={pet.id}
-          accessibilityRole="button"
-          style={[styles.petCard, selectedPet?.id === pet.id && styles.petCardSelected]}
-          onPress={() => {
-            selectPet(pet.id);
-            router.push('/pet-detail' as never);
-          }}
-        >
-          {/* Avatar */}
-          <View style={styles.avatarWrap}>
-            <Text style={styles.avatarEmoji}>{speciesEmoji(pet)}</Text>
-          </View>
-
-          {/* Info */}
-          <View style={styles.petCopy}>
-            <View style={styles.nameRow}>
-              <Text style={styles.petName}>{pet.name}</Text>
-              {/* Verified badge placeholder — shows when vet has authored a record */}
-              <View style={styles.verifiedDot} />
-            </View>
-            {pet.breed && <Text style={styles.meta}>{pet.breed}</Text>}
-            <Text style={styles.meta}>{petAgeLabel(pet)}</Text>
-            <View style={styles.statusRow}>
-              <View style={styles.statusDot} />
-              <Text style={styles.statusText}>Active</Text>
-            </View>
-          </View>
-
-          <Ionicons name="arrow-forward" size={18} color={colors.brand} />
-        </Pressable>
-      ))}
-
-      {/* Add another pet */}
-      {pets.length > 0 && (
-        <Pressable
-          accessibilityRole="button"
-          style={styles.addMore}
-          onPress={() => router.push('/pet/add' as never)}
-        >
-          <View style={styles.addMoreIcon}>
-            <Ionicons name="add" color={colors.brand} size={20} />
-          </View>
+    <View style={styles.screen}>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        
+        {/* Header */}
+        <View style={styles.header}>
           <View>
-            <Text style={styles.addMoreTitle}>Add a new companion</Text>
-            <Text style={styles.addMoreCopy}>Set up their health home in minutes.</Text>
+            <Text style={styles.eyebrow}>YOUR COMPANIONS</Text>
+            <Text style={styles.title}>Pets</Text>
+            <Text style={styles.copy}>Manage your pets' health profiles.</Text>
           </View>
-        </Pressable>
-      )}
-    </Screen>
+          <Pressable 
+            accessibilityRole="button" 
+            accessibilityLabel="Add a pet" 
+            onPress={() => router.push('/pet/add' as never)} 
+            style={({ pressed }) => [styles.addBtn, pressed && styles.pressed]}
+          >
+            <Ionicons name="add" size={26} color="#fff" />
+          </Pressable>
+        </View>
+
+        {/* Pet List */}
+        <View style={styles.list}>
+          {pets.length === 0 ? (
+            <View style={styles.empty}>
+              <View style={styles.emptyIcon}>
+                <Ionicons name="paw" size={48} color={colors.brandSoft} />
+              </View>
+              <Text style={styles.emptyTitle}>Add your first pet</Text>
+              <Text style={styles.emptyCopy}>Create a care space that grows with them.</Text>
+              <View style={{ marginTop: 16 }}>
+                <Button 
+                  label="Add a pet" 
+                  variant="secondary" 
+                  onPress={() => router.push('/pet/add' as never)} 
+                />
+              </View>
+            </View>
+          ) : (
+            pets.map((pet) => (
+              <Pressable 
+                key={pet.id} 
+                accessibilityRole="button" 
+                onPress={() => { selectPet(pet.id); router.push('/pet-detail' as never); }} 
+                style={({ pressed }) => [styles.petCard, selectedPet?.id === pet.id && styles.petSelected, pressed && styles.pressed]}
+              >
+                <View style={[styles.petAvatar, pet.species === 'cat' && styles.petAvatarCat]}>
+                  <Text style={styles.petEmoji}>{pet.species === 'cat' ? '🐈' : '🐕'}</Text>
+                </View>
+                <View style={styles.petInfo}>
+                  <Text style={styles.petName}>{pet.name}</Text>
+                  <Text style={styles.petDetail}>{petDetail(pet)}</Text>
+                  <View style={styles.recordState}>
+                    <Ionicons name="shield-checkmark" size={14} color={colors.success} />
+                    <Text style={styles.recordStateText}>Health profile active</Text>
+                  </View>
+                </View>
+                <Ionicons name="chevron-forward" size={24} color={colors.muted} />
+              </Pressable>
+            ))
+          )}
+        </View>
+
+        {pets.length > 0 && (
+          <Pressable 
+            accessibilityRole="button" 
+            onPress={() => router.push('/pet/add' as never)} 
+            style={({ pressed }) => [styles.addAnother, pressed && styles.pressed]}
+          >
+            <Ionicons name="add-circle-outline" size={24} color={colors.brand} />
+            <Text style={styles.addAnotherText}>Add another companion</Text>
+          </Pressable>
+        )}
+        
+      </ScrollView>
+    </View>
   );
 }
 
-// ── Styles ────────────────────────────────────────────────────
-
 const styles = StyleSheet.create({
-  loadingBox: { flex: 1, alignItems: 'center', justifyContent: 'center', minHeight: 200 },
-
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+  screen: { flex: 1, backgroundColor: colors.canvas },
+  content: { paddingBottom: space.xxl, gap: space.md },
+  loading: { flex: 1, minHeight: 240, justifyContent: 'center', alignItems: 'center' },
+  
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', paddingHorizontal: space.lg, paddingTop: space.md },
   eyebrow: { color: colors.brand, fontWeight: '900', fontSize: 10, letterSpacing: 1.2 },
-  title: { color: colors.ink, fontSize: 31, lineHeight: 35, fontWeight: '900', letterSpacing: -1.2, marginTop: 4 },
-  copy: { color: colors.muted, marginTop: 6, fontSize: 14 },
-  addBtn: { height: 46, width: 46, borderRadius: 23, backgroundColor: colors.brand, alignItems: 'center', justifyContent: 'center' },
-
-  emptyCard: {
-    backgroundColor: colors.mist,
-    borderRadius: radius.lg,
-    padding: space.md,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    borderWidth: 1.5,
-    borderColor: colors.softBrand,
-    borderStyle: 'dashed',
-  },
-  emptyIcon: { width: 52, height: 52, borderRadius: 18, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' },
-  emptyTitle: { color: colors.ink, fontSize: 15, fontWeight: '900' },
-  emptyCopy: { color: colors.muted, fontSize: 12, marginTop: 3 },
-
-  petCard: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    padding: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 13,
-    borderWidth: 1.5,
-    borderColor: colors.line,
-  },
-  petCardSelected: { borderColor: colors.brand, backgroundColor: colors.mist },
-  avatarWrap: { width: 64, height: 64, borderRadius: 20, backgroundColor: colors.pearl, alignItems: 'center', justifyContent: 'center' },
-  avatarEmoji: { fontSize: 32 },
-  petCopy: { flex: 1 },
-  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
-  petName: { color: colors.ink, fontSize: 20, fontWeight: '900', letterSpacing: -0.4 },
-  verifiedDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.success },
-  meta: { color: colors.muted, fontSize: 12, marginTop: 2 },
-  statusRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 9 },
-  statusDot: { height: 6, width: 6, borderRadius: 3, backgroundColor: colors.success },
-  statusText: { color: colors.success, fontSize: 11, fontWeight: '800' },
-
-  addMore: { borderRadius: radius.md, backgroundColor: colors.mist, padding: 15, flexDirection: 'row', alignItems: 'center', gap: 12 },
-  addMoreIcon: { height: 42, width: 42, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface },
-  addMoreTitle: { color: colors.ink, fontSize: 14, fontWeight: '900' },
-  addMoreCopy: { color: colors.muted, fontSize: 12, marginTop: 3 },
+  title: { color: colors.ink, fontSize: 32, fontWeight: '900', letterSpacing: -1, marginTop: 4 },
+  copy: { color: colors.muted, fontSize: 15, marginTop: 4 },
+  
+  addBtn: { width: 54, height: 54, borderRadius: 27, backgroundColor: colors.brand, justifyContent: 'center', alignItems: 'center', shadowColor: colors.brandDark, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.3, shadowRadius: 12, elevation: 4 },
+  pressed: { opacity: 0.85, transform: [{ scale: 0.98 }] },
+  
+  list: { paddingHorizontal: space.lg, marginTop: space.xl, gap: space.md },
+  
+  empty: { alignItems: 'center', justifyContent: 'center', paddingVertical: 40, backgroundColor: colors.surface, borderRadius: radius.xl, borderWidth: 1, borderColor: colors.line },
+  emptyIcon: { width: 80, height: 80, borderRadius: 40, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.mist, marginBottom: space.md },
+  emptyTitle: { color: colors.ink, fontSize: 18, fontWeight: '800' },
+  emptyCopy: { color: colors.muted, fontSize: 14, marginTop: 4, marginBottom: space.md },
+  
+  petCard: { padding: space.md, flexDirection: 'row', alignItems: 'center', gap: space.md, backgroundColor: colors.surface, borderRadius: radius.xl, shadowColor: colors.ink, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.04, shadowRadius: 12, elevation: 2 },
+  petSelected: { borderColor: colors.brandSoft, borderWidth: 1.5, backgroundColor: colors.mist },
+  
+  petAvatar: { width: 64, height: 64, borderRadius: 32, backgroundColor: colors.pearl, alignItems: 'center', justifyContent: 'center' },
+  petAvatarCat: { backgroundColor: '#E3F2FD' },
+  petEmoji: { fontSize: 32 },
+  
+  petInfo: { flex: 1, gap: 4, justifyContent: 'center' },
+  petName: { color: colors.ink, fontSize: 18, fontWeight: '800', letterSpacing: -0.4 },
+  petDetail: { color: colors.muted, fontSize: 14 },
+  
+  recordState: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
+  recordStateText: { color: colors.success, fontSize: 12, fontWeight: '700' },
+  
+  addAnother: { marginHorizontal: space.lg, marginTop: space.lg, minHeight: 64, borderRadius: radius.xl, backgroundColor: colors.mist, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 10, borderWidth: 1.5, borderColor: colors.softBrand, borderStyle: 'dashed' },
+  addAnotherText: { color: colors.brand, fontSize: 15, fontWeight: '800' },
 });

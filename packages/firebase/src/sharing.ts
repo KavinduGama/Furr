@@ -8,7 +8,7 @@
 
 import type { AccessGrant, ShareCategory, GrantDuration } from '@furr/core';
 
-const IS_DEV_BYPASS = typeof process !== 'undefined' && !process.env?.EXPO_PUBLIC_FIREBASE_API_KEY;
+const IS_DEV_BYPASS = typeof process !== 'undefined' && !process.env?.EXPO_PUBLIC_FIREBASE_API_KEY && !process.env?.NEXT_PUBLIC_FIREBASE_API_KEY;
 
 let devGrants: AccessGrant[] = [];
 
@@ -22,7 +22,7 @@ function generateCode(): string {
   return Array.from({ length: 6 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
 }
 
-const grantPath = (uid: string) => `ownerGrants/${uid}/grants`;
+const grantPath = (uid: string) => `users/${uid}/grants`;
 
 // ─────────────────────────────────────────────────────────────
 //  Create grant  (SHR-001)
@@ -91,13 +91,28 @@ export function subscribeToGrants(
     const interval = setInterval(tick, 10000); // refresh every 10s in dev
     return () => clearInterval(interval);
   }
+  // Capture the real unsubscribe so it can be called on cleanup.
+  let unsubscribe: (() => void) | undefined;
+  let active = true;
+
   void (async () => {
-    const { getFirestore, collection, query, orderBy, onSnapshot } = await import('firebase/firestore');
-    const db = getFirestore();
-    const q = query(collection(db, grantPath(ownerUid)), orderBy('createdAt', 'desc'));
-    return onSnapshot(q, (snap) => { onUpdate(snap.docs.map((d) => d.data() as AccessGrant)); });
+    try {
+      const { getFirestore, collection, query, orderBy, onSnapshot } = await import('firebase/firestore');
+      const db = getFirestore();
+      const q = query(collection(db, grantPath(ownerUid)), orderBy('createdAt', 'desc'));
+      unsubscribe = onSnapshot(q, (snap) => {
+        onUpdate(snap.docs.map((d) => d.data() as AccessGrant));
+      });
+    } catch (err) {
+      console.error('[furr/firebase] subscribeToGrants error', err);
+      if (active) onUpdate([]);
+    }
   })();
-  return () => {};
+
+  return () => {
+    active = false;
+    unsubscribe?.();
+  };
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -133,15 +148,17 @@ export async function redeemGrant(code: string, vetUid: string): Promise<AccessG
     );
     if (grantIndex === -1) throw new Error('Invalid or expired code');
     
-    // In real app, we calculate expiry based on duration enum
-    const durationMs = 24 * 60 * 60 * 1000; // Mock 24h
-    const accessExpiresAt = new Date(Date.now() + durationMs).toISOString();
+    const durationMs = devGrants[grantIndex].duration === '7d'
+      ? 7 * 24 * 60 * 60 * 1000
+      : 24 * 60 * 60 * 1000;
+    const grantExpiresAt = new Date(Date.now() + durationMs).toISOString();
     
     const redeemedGrant: AccessGrant = {
       ...devGrants[grantIndex],
       redeemedAt: now,
       redeemedByUid: vetUid,
-      accessExpiresAt,
+      grantExpiresAt,
+      status: 'redeemed',
       updatedAt: now,
     };
     devGrants[grantIndex] = redeemedGrant;
@@ -158,7 +175,7 @@ export async function getVetActiveGrants(vetUid: string): Promise<AccessGrant[]>
   const now = new Date().toISOString();
   if (IS_DEV_BYPASS) {
     return devGrants.filter(
-      (g) => g.redeemedByUid === vetUid && g.status === 'active' && g.accessExpiresAt && g.accessExpiresAt > now
+      (g) => g.redeemedByUid === vetUid && g.status === 'redeemed' && g.grantExpiresAt && g.grantExpiresAt > now
     );
   }
   return [];

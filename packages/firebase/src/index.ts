@@ -14,20 +14,31 @@ export const requiredFirebaseKeys = [
   'EXPO_PUBLIC_FIREBASE_APP_ID',
 ] as const;
 
+/**
+ * Build FirebaseOptions from environment variables.
+ * Supports both EXPO_PUBLIC_ (React Native) and NEXT_PUBLIC_ (Next.js) prefixes.
+ */
 export function firebaseOptionsFromEnvironment(
   environment: Record<string, string | undefined>,
 ): FirebaseOptions | null {
-  const values = requiredFirebaseKeys.map((key) => environment[key]);
-  if (values.some((value) => !value)) return null;
+  // Try EXPO_PUBLIC_ first, then NEXT_PUBLIC_ (for web portals)
+  const apiKey = environment.EXPO_PUBLIC_FIREBASE_API_KEY || environment.NEXT_PUBLIC_FIREBASE_API_KEY;
+  const authDomain = environment.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN || environment.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN;
+  const projectId = environment.EXPO_PUBLIC_FIREBASE_PROJECT_ID || environment.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+  const storageBucket = environment.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET || environment.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
+  const appId = environment.EXPO_PUBLIC_FIREBASE_APP_ID || environment.NEXT_PUBLIC_FIREBASE_APP_ID;
+
+  if (!apiKey || !authDomain || !projectId || !appId) return null;
 
   return {
-    apiKey: environment.EXPO_PUBLIC_FIREBASE_API_KEY!,
-    authDomain: environment.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN!,
-    projectId: environment.EXPO_PUBLIC_FIREBASE_PROJECT_ID!,
-    storageBucket: environment.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET!,
-    appId: environment.EXPO_PUBLIC_FIREBASE_APP_ID!,
+    apiKey,
+    authDomain,
+    projectId,
+    storageBucket: storageBucket || '',
+    appId,
   };
 }
+
 
 // ── Init ─────────────────────────────────────────────────────
 
@@ -48,6 +59,7 @@ export function initFirebase(options: FirebaseOptions | null): boolean {
 export {
   sendPhoneOtp,
   verifyOtp,
+  signInWithEmail,
   signOut,
   subscribeToAuthState,
   getCurrentUser,
@@ -55,6 +67,8 @@ export {
   DevConfirmationResult,
   DEV_BYPASS_CODE,
 } from './auth';
+
+export { getOwnerProfile, saveOwnerProfile, createOwnerProfile } from './owner-profile';
 
 // ── Re-exports from pet repository ───────────────────────────
 
@@ -64,6 +78,7 @@ export {
   updatePet,
   archivePet,
   restorePet,
+  getPet,
 } from './pets';
 
 // ── Re-exports from health repositories ──────────────────────
@@ -100,19 +115,20 @@ export {
   createAccessGrant,
   subscribeToGrants,
   revokeGrant,
+  redeemGrant,
+  getVetActiveGrants,
+  getGrant,
 } from './sharing';
+
+// ── Re-exports from vet ───────────────────────────────────────
+
+export {
+  getProfessionalProfile,
+  devProfessionalProfiles,
+} from './vet';
 
 // ── Re-exports from reminders ─────────────────────────────────
 
-export type { CreateReminderInput } from './reminders';
-export {
-  requestNotificationPermissions,
-  createReminder,
-  subscribeToReminders,
-  completeReminder,
-  skipReminder,
-  cancelReminder,
-} from './reminders';
-export * from './vet';
-export * from './sharing';
-export { getPet } from './pets';
+// Reminders live at `@furr/firebase/src/reminders` because they import the
+// Expo-only notification runtime. Keeping that out of this entry point keeps
+// the shared package safe to import from the Next.js portals.

@@ -8,6 +8,7 @@ import {
   type PressableProps,
 } from 'react-native';
 import { colors, radius } from '../index';
+import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'text' | 'danger';
 
@@ -19,6 +20,8 @@ export interface ButtonProps extends Omit<PressableProps, 'style'> {
   icon?: React.ReactNode;
 }
 
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
 export function Button({
   label,
   variant = 'primary',
@@ -29,18 +32,33 @@ export function Button({
   ...rest
 }: ButtonProps) {
   const isDisabled = disabled || loading;
+  const scale = useSharedValue(1);
+
+  const animatedStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ scale: scale.value }],
+    };
+  });
 
   return (
-    <Pressable
+    <AnimatedPressable
       accessibilityRole="button"
       accessibilityLabel={label}
       disabled={isDisabled}
-      style={({ pressed }) => [
+      onPressIn={(e) => {
+        scale.value = withSpring(0.96, { damping: 15, stiffness: 200 });
+        if (rest.onPressIn) rest.onPressIn(e);
+      }}
+      onPressOut={(e) => {
+        scale.value = withSpring(1, { damping: 15, stiffness: 200 });
+        if (rest.onPressOut) rest.onPressOut(e);
+      }}
+      style={[
         styles.base,
         styles[variant],
         fullWidth && styles.full,
         isDisabled && styles.disabled,
-        pressed && !isDisabled && styles.pressed,
+        animatedStyle,
       ]}
       {...rest}
     >
@@ -55,28 +73,29 @@ export function Button({
           <Text style={[styles.label, styles[`${variant}Text`]]}>{label}</Text>
         </View>
       )}
-    </Pressable>
+    </AnimatedPressable>
   );
 }
 
 const styles = StyleSheet.create({
   base: {
     minHeight: 56,
-    borderRadius: radius.md,
+    borderRadius: radius.pill, // Modern pill shape
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: 24,
   },
   full: { alignSelf: 'stretch' },
   inner: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   iconWrap: { marginRight: 2 },
-  disabled: { opacity: 0.48 },
-  pressed: { opacity: 0.82 },
+  disabled: { opacity: 0.5 },
 
   // Variants
-  primary: { backgroundColor: colors.brand },
+  primary: { 
+    backgroundColor: colors.brand, 
+  },
   secondary: {
-    backgroundColor: 'transparent',
+    backgroundColor: colors.surface,
     borderWidth: 1.5,
     borderColor: colors.brand,
   },
@@ -84,7 +103,7 @@ const styles = StyleSheet.create({
   danger: { backgroundColor: colors.danger },
 
   // Label colours
-  label: { fontSize: 15, fontWeight: '900' },
+  label: { fontSize: 16, fontWeight: '700' }, // Modern semibold
   primaryText: { color: '#fff' },
   secondaryText: { color: colors.brand },
   textText: { color: colors.brand },

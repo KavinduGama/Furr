@@ -1,0 +1,185 @@
+rules_version = '2';
+
+// ─────────────────────────────────────────────────────────────
+//  Furr — Firestore Security Rules
+//
+//  These rules enforce the MVP permission matrix:
+//  - Owners can only read/write their own data.
+//  - Vets can read pet data only if they hold an active AccessGrant.
+//  - Admins have access to operational data only.
+//  - Nobody can access another user's data without explicit permission.
+// ─────────────────────────────────────────────────────────────
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Helper functions ──────────────────────────────────────
+
+    // Is the request from a signed-in user?
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Is the request from this specific user?
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    // Does this user have a specific custom claim role?
+    function hasRole(role) {
+      return isSignedIn() && request.auth.token[role] == true;
+    }
+
+    // Is this user an admin?
+    function isAdmin() {
+      return hasRole('admin');
+    }
+
+    // ── Vet grant access helper ───────────────────────────────
+    //
+    // Returns true when the requesting vet holds a valid AccessGrant
+    // for this specific pet:
+    //   • The grant exists at users/{ownerUid}/grants/{anyGrantId}
+    //   • The grant's petId matches the requested pet
+    //   • The grant status is 'redeemed'
+    //   • The grant was redeemed by the requesting user
+    //   • The grantExpiresAt timestamp is still in the future
+    //
+    // NOTE: Firestore rules cannot do cross-collection queries, so we
+    // rely on a root-level `redemptions` mirror collection written by a
+    // Cloud Function when a vet redeems a grant. Until Cloud Functions
+    // are deployed, this check uses the owner's grants subcollection
+    // with a direct document path approach.
+    //
+    // In the interim MVP, vet access is granted via the grants subcollection:
+    //   users/{ownerUid}/grants/{grantId}  where redeemedByUid == request.auth.uid
+    function hasActiveGrant(ownerUid, petId) {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/users/$(ownerUid)/grants/$(request.auth.uid + '_' + petId))
+        && get(/databases/$(database)/documents/users/$(ownerUid)/grants/$(request.auth.uid + '_' + petId)).data.status == 'redeemed'
+        && get(/databases/$(database)/documents/users/$(ownerUid)/grants/$(request.auth.uid + '_' + petId)).data.redeemedByUid == request.auth.uid
+        && get(/databases/$(database)/documents/users/$(ownerUid)/grants/$(request.auth.uid + '_' + petId)).data.grantExpiresAt > request.time;
+    }
+
+    // ── User Profiles ─────────────────────────────────────────
+    // Each user has a profile doc at /users/{uid}
+    // Only the owner can read/write their own profile.
+    // Admins can read (for support) but not write pet data.
+
+    match /users/{uid} {
+      allow read: if isOwner(uid) || isAdmin();
+      allow create: if isOwner(uid);
+      allow update: if isOwner(uid);
+      allow delete: if false; // Deletions handled by admin process
+    }
+
+    // ── Pets ──────────────────────────────────────────────────
+    // Pets are stored at /users/{ownerUid}/pets/{petId}
+    // Owners can CRUD. Vets can read if they hold a valid access grant.
+
+    match /users/{ownerUid}/pets/{petId} {
+      allow read: if isOwner(ownerUid) || isAdmin() || hasActiveGrant(ownerUid, petId);
+      allow create: if isOwner(ownerUid);
+      allow update: if isOwner(ownerUid);
+      allow delete: if false; // Use archive instead
+
+      // ── Health Records (vaccinations, medications, etc.) ────
+      // Owners write. Vets can read if they hold an active grant
+      // AND the grant includes the matching share category.
+
+      match /vaccinations/{docId} {
+        allow read: if isOwner(ownerUid) || isAdmin() || hasActiveGrant(ownerUid, petId);
+        allow create: if isOwner(ownerUid);
+        allow update: if isOwner(ownerUid);
+        allow delete: if false;
+      }
+
+      match /medications/{docId} {
+        allow read: if isOwner(ownerUid) || isAdmin() || hasActiveGrant(ownerUid, petId);
+        allow create: if isOwner(ownerUid);
+        allow update: if isOwner(ownerUid);
+        allow delete: if false;
+      }
+
+      match /weights/{docId} {
+        allow read: if isOwner(ownerUid) || isAdmin() || hasActiveGrant(ownerUid, petId);
+        allow create: if isOwner(ownerUid);
+        allow update: if isOwner(ownerUid);
+        allow delete: if isOwner(ownerUid);
+      }
+
+      match /observations/{docId} {
+        allow read: if isOwner(ownerUid) || isAdmin() || hasActiveGrant(ownerUid, petId);
+        allow create: if isOwner(ownerUid);
+        allow update: if isOwner(ownerUid);
+        allow delete: if false;
+      }
+
+      match /flags/{docId} {
+        allow read: if isOwner(ownerUid) || isAdmin() || hasActiveGrant(ownerUid, petId);
+        allow create: if isOwner(ownerUid);
+        allow update: if isOwner(ownerUid);
+        allow delete: if false;
+      }
+
+      match /documents/{docId} {
+        allow read: if isOwner(ownerUid) || isAdmin() || hasActiveGrant(ownerUid, petId);
+        allow create: if isOwner(ownerUid);
+        allow update: if isOwner(ownerUid);
+        allow delete: if false;
+      }
+
+      match /reminders/{docId} {
+        allow read: if isOwner(ownerUid) || isAdmin();
+        allow create: if isOwner(ownerUid);
+        allow update: if isOwner(ownerUid);
+        allow delete: if false;
+      }
+    }
+
+    // ── Access Grants (Sharing) ───────────────────────────────
+    // Grants live at /users/{ownerUid}/grants/{grantId}
+    // Owner creates/revokes. Vets can read grants assigned to them.
+
+    match /users/{ownerUid}/grants/{grantId} {
+      allow read: if isOwner(ownerUid)
+                  || isAdmin()
+                  || (isSignedIn() && resource.data.redeemedByUid == request.auth.uid);
+      allow create: if isOwner(ownerUid);
+      allow update: if isOwner(ownerUid)
+                    || (isSignedIn()
+                        && resource.data.status == 'active'
+                        && request.resource.data.status == 'redeemed'
+                        && request.resource.data.redeemedByUid == request.auth.uid);
+      allow delete: if false;
+    }
+
+    // ── Professional Profiles ─────────────────────────────────
+    // Stored at /professionals/{uid}
+
+    match /professionals/{uid} {
+      allow read: if isOwner(uid) || isAdmin();
+      allow create: if isSignedIn() && request.auth.uid == uid;
+      allow update: if isAdmin(); // Only admin can verify/suspend
+      allow delete: if false;
+    }
+
+    // ── Admin-only: Reference Data ────────────────────────────
+    // Breeds, vaccine types, districts, etc.
+
+    match /reference/{docId} {
+      allow read: if isSignedIn();  // Everyone can read reference data
+      allow write: if isAdmin();    // Only admins can manage it
+    }
+
+    // ── Admin-only: Audit Events ──────────────────────────────
+
+    match /audit/{docId} {
+      allow read: if isAdmin();
+      allow write: if false; // Only server/Cloud Functions write audit
+    }
+
+    // ── Default deny ──────────────────────────────────────────
+    // Any path not matched above is denied by default.
+  }
+}

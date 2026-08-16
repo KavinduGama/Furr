@@ -10,7 +10,7 @@
 
 import type { PetDocument } from '@furr/core';
 
-const IS_DEV_BYPASS = typeof process !== 'undefined' && !process.env?.EXPO_PUBLIC_FIREBASE_API_KEY;
+const IS_DEV_BYPASS = typeof process !== 'undefined' && !process.env?.EXPO_PUBLIC_FIREBASE_API_KEY && !process.env?.NEXT_PUBLIC_FIREBASE_API_KEY;
 
 // ── Dev in-memory store ───────────────────────────────────────
 
@@ -22,7 +22,7 @@ function devId(): string {
 
 // ── Firestore path ────────────────────────────────────────────
 
-const docColPath = (uid: string, petId: string) => `ownerPets/${uid}/pets/${petId}/documents`;
+const docColPath = (uid: string, petId: string) => `users/${uid}/pets/${petId}/documents`;
 
 // ── Storage path builder ──────────────────────────────────────
 
@@ -152,19 +152,33 @@ export function subscribeToDocuments(
     onUpdate(devDocs.filter((d) => d.petId === petId && !d.isArchived));
     return () => {};
   }
+
+  // Capture the real unsubscribe so it can be called on cleanup.
+  let unsubscribe: (() => void) | undefined;
+  let active = true;
+
   void (async () => {
-    const { getFirestore, collection, query, where, orderBy, onSnapshot } = await import('firebase/firestore');
-    const db = getFirestore();
-    const q = query(
-      collection(db, docColPath(ownerUid, petId)),
-      where('isArchived', '==', false),
-      orderBy('createdAt', 'desc'),
-    );
-    return onSnapshot(q, (snap) => {
-      onUpdate(snap.docs.map((d) => d.data() as PetDocument));
-    });
+    try {
+      const { getFirestore, collection, query, where, orderBy, onSnapshot } = await import('firebase/firestore');
+      const db = getFirestore();
+      const q = query(
+        collection(db, docColPath(ownerUid, petId)),
+        where('isArchived', '==', false),
+        orderBy('createdAt', 'desc'),
+      );
+      unsubscribe = onSnapshot(q, (snap) => {
+        onUpdate(snap.docs.map((d) => d.data() as PetDocument));
+      });
+    } catch (err) {
+      console.error('[furr/firebase] subscribeToDocuments error', err);
+      if (active) onUpdate([]);
+    }
   })();
-  return () => {};
+
+  return () => {
+    active = false;
+    unsubscribe?.();
+  };
 }
 
 // ─────────────────────────────────────────────────────────────

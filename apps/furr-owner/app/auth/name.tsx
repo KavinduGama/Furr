@@ -2,18 +2,15 @@ import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useAuth } from '@/src/context/auth';
+import { createOwnerProfile } from '@furr/firebase';
+import type { OwnerProfile } from '@furr/core';
 import { Button, KeyboardScreen, TextInput, colors, radius, space } from '@furr/ui';
-
-// ─────────────────────────────────────────────────────────────
-//  Display name setup screen (new users only)
-//  Shown by AuthNavigationGuard when profile.displayName === null
-// ─────────────────────────────────────────────────────────────
 
 const MIN_LENGTH = 2;
 const MAX_LENGTH = 50;
 
 export default function NameScreen() {
-  const { profile, setProfile } = useAuth();
+  const { firebaseUser, profile, setProfile } = useAuth();
   const [name, setName] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -37,17 +34,21 @@ export default function NameScreen() {
     try {
       const trimmedName = name.trim();
 
-      // TODO: Write to Firestore ownerProfiles/{uid}
-      // await setDoc(doc(db, 'ownerProfiles', profile!.uid), {
-      //   ...profile,
-      //   displayName: trimmedName,
-      //   updatedAt: serverTimestamp(),
-      // }, { merge: true });
-
-      // Update local context so AuthNavigationGuard redirects to /(tabs)
-      if (profile) {
-        setProfile({ ...profile, displayName: trimmedName });
-      }
+      if (!firebaseUser) throw new Error('No authenticated user');
+      const nextProfile: OwnerProfile = {
+        uid: firebaseUser.uid,
+        displayName: trimmedName,
+        phoneE164: firebaseUser.phoneNumber ?? profile?.phoneE164 ?? '',
+        timezone: profile?.timezone ?? 'Asia/Colombo',
+        notificationsEnabled: profile?.notificationsEnabled ?? true,
+        termsAcceptedAt: profile?.termsAcceptedAt ?? new Date().toISOString(),
+        termsVersion: profile?.termsVersion ?? '2026-08-01',
+        createdAt: profile?.createdAt ?? new Date().toISOString(),
+        accountStatus: profile?.accountStatus ?? 'active',
+      };
+      // Use createOwnerProfile for the first time setup so createdAt is written correctly
+      await createOwnerProfile(nextProfile);
+      setProfile(nextProfile);
     } catch {
       setError('Couldn\'t save your name. Please try again.');
     } finally {
@@ -56,98 +57,125 @@ export default function NameScreen() {
   };
 
   const handleSkip = () => {
-    // Allow skipping — set a placeholder so the guard passes
-    if (profile) {
-      setProfile({ ...profile, displayName: 'Furr member' });
+    if (firebaseUser) {
+      void handleContinueWithName('Furr member');
     }
+  };
+
+  const handleContinueWithName = async (displayName: string) => {
+    const nextProfile: OwnerProfile = {
+      uid: firebaseUser!.uid,
+      displayName,
+      phoneE164: firebaseUser!.phoneNumber ?? profile?.phoneE164 ?? '',
+      timezone: profile?.timezone ?? 'Asia/Colombo',
+      notificationsEnabled: profile?.notificationsEnabled ?? true,
+      termsAcceptedAt: profile?.termsAcceptedAt ?? new Date().toISOString(),
+      termsVersion: profile?.termsVersion ?? '2026-08-01',
+      createdAt: profile?.createdAt ?? new Date().toISOString(),
+      accountStatus: profile?.accountStatus ?? 'active',
+    };
+    await createOwnerProfile(nextProfile);
+    setProfile(nextProfile);
   };
 
   return (
     <KeyboardScreen>
-      {/* Paw icon */}
-      <View style={styles.iconWrap}>
-        <Ionicons name="paw" size={34} color={colors.brand} />
+      {/* Top Bar matching Phone Screen */}
+      <View style={styles.topBar}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Go back" style={styles.back} onPress={handleSkip}>
+          <Ionicons name="arrow-back" size={24} color={colors.ink} />
+        </Pressable>
       </View>
 
-      {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.eyebrow}>ALMOST THERE</Text>
-        <Text style={styles.title}>What should{'\n'}we call you?</Text>
+        <Text style={styles.title}>Create Account</Text>
         <Text style={styles.copy}>
-          This is the name your pets and records will be associated with.
-          You can change it anytime in your profile.
+          What should we call you?
         </Text>
       </View>
 
-      {/* Name input */}
-      <TextInput
-        label="Your name"
-        placeholder="e.g. Kavindu"
-        value={name}
-        onChangeText={(t) => {
-          setName(t);
-          if (error) setError(null);
-        }}
-        maxLength={MAX_LENGTH}
-        returnKeyType="done"
-        onSubmitEditing={handleContinue}
-        error={error ?? undefined}
-        autoFocus
-        autoCapitalize="words"
-        accessibilityLabel="Your display name"
-      />
+      <View style={styles.form}>
+        <TextInput
+          label="Full Name"
+          placeholder="e.g. Kavindu Deshappriya"
+          value={name}
+          onChangeText={(t) => {
+            setName(t);
+            if (error) setError(null);
+          }}
+          maxLength={MAX_LENGTH}
+          returnKeyType="done"
+          onSubmitEditing={handleContinue}
+          error={error ?? undefined}
+          autoFocus
+          autoCapitalize="words"
+          accessibilityLabel="Your full name"
+        />
 
-      {/* Character count */}
-      <Text style={styles.charCount}>
-        {name.trim().length}/{MAX_LENGTH}
-      </Text>
+        <TextInput
+          label="Phone Number"
+          value={firebaseUser?.phoneNumber ?? profile?.phoneE164 ?? ''}
+          editable={false}
+          style={styles.disabledInput}
+        />
+      </View>
 
-      {/* CTA */}
-      <Button
-        label="Continue to Furr"
-        loading={loading}
-        disabled={name.trim().length < MIN_LENGTH}
-        onPress={handleContinue}
-      />
-
-      {/* Skip */}
-      <Pressable
-        accessibilityRole="button"
-        style={styles.skip}
-        onPress={handleSkip}
-      >
-        <Text style={styles.skipText}>Skip for now</Text>
-      </Pressable>
+      <View style={styles.actions}>
+        <Button
+          label="Complete Sign Up"
+          loading={loading}
+          disabled={name.trim().length < MIN_LENGTH}
+          onPress={handleContinue}
+        />
+        <Text style={styles.legal}>
+          By signing up, you agree to our{'\n'}
+          <Text style={styles.legalLink}>Terms & Privacy Policy</Text>
+        </Text>
+      </View>
     </KeyboardScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  iconWrap: {
-    width: 68,
-    height: 68,
-    borderRadius: radius.lg,
-    backgroundColor: colors.mist,
-    alignItems: 'center',
+  topBar: {
+    height: 44,
     justifyContent: 'center',
-    alignSelf: 'flex-start',
+    marginBottom: space.lg,
   },
-  header: { gap: 8 },
-  eyebrow: { color: colors.brand, fontSize: 10, fontWeight: '900', letterSpacing: 1.3 },
+  back: {
+    padding: 8,
+    marginLeft: -8,
+  },
+  header: { gap: space.sm, marginBottom: space.xl, alignItems: 'center' },
   title: {
     color: colors.ink,
-    fontSize: 32,
-    fontWeight: '900',
-    letterSpacing: -1.3,
-    lineHeight: 36,
+    fontSize: 28,
+    fontWeight: '800',
+    letterSpacing: -0.5,
   },
-  copy: { color: colors.muted, fontSize: 15, lineHeight: 22 },
-  charCount: {
+  copy: { color: colors.muted, fontSize: 16, textAlign: 'center' },
+  form: {
+    gap: space.lg,
+  },
+  disabledInput: {
+    backgroundColor: colors.pearl,
     color: colors.muted,
-    fontSize: 11,
-    textAlign: 'right',
-    marginTop: -8,
   },
-  skip: { alignItems: 'center', paddingVertical: space.sm },
-  skipText: { color: colors.brand, fontSize: 13, fontWeight: '800' },
+  actions: {
+    marginTop: 'auto',
+    paddingTop: space.xl,
+    paddingBottom: space.lg,
+    gap: space.md,
+  },
+  legal: {
+    color: colors.muted,
+    fontSize: 12,
+    lineHeight: 18,
+    textAlign: 'center',
+    marginTop: space.sm,
+  },
+  legalLink: {
+    color: colors.brand,
+    fontWeight: '700',
+  },
 });

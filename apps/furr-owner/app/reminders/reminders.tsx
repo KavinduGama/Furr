@@ -15,15 +15,11 @@ import {
   completeReminder,
   skipReminder,
   cancelReminder,
-} from '@furr/firebase';
-import { colors, radius, space } from '@furr/ui';
+} from '@furr/firebase/src/reminders';
+import { colors, radius, space, Button } from '@furr/ui';
 import { Screen } from '@/src/components/screen';
 import { useAuth } from '@/src/context/auth';
 import { usePets } from '@/src/context/pets';
-
-// ─────────────────────────────────────────────────────────────
-//  Reminders screen  (REM-001/002)
-// ─────────────────────────────────────────────────────────────
 
 const TYPE_ICONS: Record<string, string> = {
   vaccination_due: 'shield-checkmark',
@@ -75,7 +71,7 @@ export default function RemindersScreen() {
     if (!firebaseUser || !selectedPet) return;
     setActing(rem.id);
     try {
-      await completeReminder(firebaseUser.uid, selectedPet.id, rem.id);
+      await completeReminder(firebaseUser.uid, selectedPet.id, rem.id, rem.notificationId);
       setReminders((prev) => prev.map((r) => r.id === rem.id ? { ...r, status: 'completed' as const } : r));
     } finally { setActing(null); }
   };
@@ -88,7 +84,7 @@ export default function RemindersScreen() {
         text: 'Skip', onPress: async () => {
           setActing(rem.id);
           try {
-            await skipReminder(firebaseUser.uid, selectedPet.id, rem.id);
+            await skipReminder(firebaseUser.uid, selectedPet.id, rem.id, undefined, rem.notificationId);
             setReminders((prev) => prev.map((r) => r.id === rem.id ? { ...r, status: 'skipped' as const } : r));
           } finally { setActing(null); }
         },
@@ -137,49 +133,55 @@ export default function RemindersScreen() {
           style={styles.addBtn}
           onPress={() => router.push('/reminders/add-reminder' as never)}
         >
-          <Ionicons name="add" size={22} color="#fff" />
+          <Ionicons name="add" size={24} color="#fff" />
         </Pressable>
       </View>
 
       {/* Pending */}
       {pending.length === 0 ? (
-        <Pressable
-          accessibilityRole="button"
-          style={styles.emptyCard}
-          onPress={() => router.push('/reminders/add-reminder' as never)}
-        >
-          <Ionicons name="notifications-outline" size={22} color={colors.muted} />
-          <View style={{ flex: 1 }}>
-            <Text style={styles.emptyTitle}>No pending reminders</Text>
-            <Text style={styles.emptyCopy}>Add a vaccination due date or custom care reminder.</Text>
+        <View style={styles.emptyContainer}>
+          <View style={styles.emptyIconWrap}>
+            <Ionicons name="calendar-clear" size={48} color={colors.brandSoft} />
           </View>
-          <Ionicons name="arrow-forward" size={15} color={colors.brand} />
-        </Pressable>
+          <Text style={styles.emptyTitle}>No reminders</Text>
+          <Text style={styles.emptyCopy}>Your pet's schedule is completely clear right now.</Text>
+          <View style={{marginTop: space.lg}}>
+            <Button 
+              label="Add Reminder" 
+              variant="secondary" 
+              onPress={() => router.push('/reminders/add-reminder' as never)} 
+            />
+          </View>
+        </View>
       ) : (
-        pending.map((rem) => {
-          const overdue = isOverdue(rem.scheduledAt, rem.status);
-          const icon = TYPE_ICONS[rem.type] ?? 'notifications';
-          const iconColor = TYPE_COLORS[rem.type] ?? colors.brand;
-          const isActing = acting === rem.id;
+        <View style={styles.list}>
+          {pending.map((rem) => {
+            const overdue = isOverdue(rem.scheduledAt, rem.status);
+            const icon = TYPE_ICONS[rem.type] ?? 'notifications';
+            const iconColor = TYPE_COLORS[rem.type] ?? colors.brand;
+            const isActing = acting === rem.id;
 
-          return (
-            <View key={rem.id} style={[styles.remCard, overdue && styles.remCardOverdue]}>
-              <View style={[styles.remIcon, { backgroundColor: `${iconColor}18` }]}>
-                <Ionicons name={icon as never} size={18} color={iconColor} />
-              </View>
-              <View style={styles.remBody}>
-                <View style={styles.remTitleRow}>
-                  <Text style={styles.remTitle}>{rem.title}</Text>
-                  {overdue && (
-                    <View style={styles.overdueBadge}>
-                      <Text style={styles.overdueBadgeText}>OVERDUE</Text>
+            return (
+              <View key={rem.id} style={[styles.remCard, overdue && styles.remCardOverdue]}>
+                <View style={styles.remCardHeader}>
+                  <View style={[styles.remIcon, { backgroundColor: `${iconColor}18` }]}>
+                    <Ionicons name={icon as never} size={20} color={iconColor} />
+                  </View>
+                  <View style={styles.remBody}>
+                    <View style={styles.remTitleRow}>
+                      <Text style={styles.remTitle}>{rem.title}</Text>
+                      {overdue && (
+                        <View style={styles.overdueBadge}>
+                          <Text style={styles.overdueBadgeText}>OVERDUE</Text>
+                        </View>
+                      )}
                     </View>
-                  )}
+                    <Text style={styles.remBodyText}>{rem.body}</Text>
+                    <Text style={[styles.remDate, overdue && styles.remDateOverdue]}>
+                      {formatDateTime(rem.scheduledAt)}
+                    </Text>
+                  </View>
                 </View>
-                <Text style={styles.remBodyText}>{rem.body}</Text>
-                <Text style={[styles.remDate, overdue && styles.remDateOverdue]}>
-                  {formatDateTime(rem.scheduledAt)}
-                </Text>
 
                 {/* Actions */}
                 <View style={styles.remActions}>
@@ -193,7 +195,7 @@ export default function RemindersScreen() {
                   </Pressable>
                   <Pressable
                     accessibilityRole="button"
-                    style={styles.actionBtn}
+                    style={[styles.actionBtn, styles.actionSecondary]}
                     onPress={() => handleSkip(rem)}
                     disabled={isActing}
                   >
@@ -201,7 +203,7 @@ export default function RemindersScreen() {
                   </Pressable>
                   <Pressable
                     accessibilityRole="button"
-                    style={styles.actionBtn}
+                    style={[styles.actionBtn, styles.actionSecondary]}
                     onPress={() => handleCancel(rem)}
                     disabled={isActing}
                   >
@@ -209,39 +211,36 @@ export default function RemindersScreen() {
                   </Pressable>
                 </View>
               </View>
-            </View>
-          );
-        })
+            );
+          })}
+        </View>
       )}
 
       {/* Done */}
       {done.length > 0 && (
-        <>
+        <View style={styles.historySection}>
           <View style={styles.historyDivider}>
-            <View style={styles.divLine} />
-            <Text style={styles.divLabel}>COMPLETED</Text>
-            <View style={styles.divLine} />
+            <Text style={styles.divLabel}>PAST REMINDERS</Text>
           </View>
           {done.slice(0, 5).map((rem) => (
-            <View key={rem.id} style={[styles.remCard, styles.remCardDone]}>
-              <View style={[styles.remIcon, { backgroundColor: colors.pearl }]}>
+            <View key={rem.id} style={[styles.remCardDoneRow]}>
+              <View style={[styles.remIconDone, { backgroundColor: colors.pearl }]}>
                 <Ionicons
                   name={rem.status === 'completed' ? 'checkmark-circle' : rem.status === 'skipped' ? 'remove-circle' : 'close-circle'}
-                  size={18}
+                  size={16}
                   color={rem.status === 'completed' ? colors.success : colors.muted}
                 />
               </View>
               <View style={styles.remBody}>
                 <Text style={[styles.remTitle, styles.remTitleDone]}>{rem.title}</Text>
-                <Text style={styles.remDate}>{formatDateTime(rem.scheduledAt)}</Text>
-                <Text style={styles.remStatusLabel}>{rem.status.charAt(0).toUpperCase() + rem.status.slice(1)}</Text>
+                <Text style={styles.remDateDone}>{formatDateTime(rem.scheduledAt)}</Text>
               </View>
             </View>
           ))}
-        </>
+        </View>
       )}
 
-      <View style={{ height: 24 }} />
+      <View style={{ height: 48 }} />
     </Screen>
   );
 }
@@ -249,35 +248,49 @@ export default function RemindersScreen() {
 // ── Styles ─────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
+  screen: { backgroundColor: colors.canvas },
   loadingBox: { flex: 1, alignItems: 'center', justifyContent: 'center', minHeight: 200 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   eyebrow: { color: colors.brand, fontWeight: '900', fontSize: 10, letterSpacing: 1.2 },
-  title: { color: colors.ink, fontSize: 31, lineHeight: 35, fontWeight: '900', letterSpacing: -1.2, marginTop: 4 },
-  sub: { color: colors.muted, fontSize: 12, marginTop: 4 },
-  addBtn: { width: 46, height: 46, borderRadius: 23, backgroundColor: colors.brand, alignItems: 'center', justifyContent: 'center' },
-  emptyCard: { backgroundColor: colors.surface, borderRadius: radius.md, padding: 16, flexDirection: 'row', alignItems: 'center', gap: 13, borderWidth: 1, borderColor: colors.line },
-  emptyTitle: { color: colors.ink, fontSize: 14, fontWeight: '900' },
-  emptyCopy: { color: colors.muted, fontSize: 12, marginTop: 3, lineHeight: 16 },
-  remCard: { backgroundColor: colors.surface, borderRadius: radius.md, padding: 13, flexDirection: 'row', gap: 11, borderWidth: 1, borderColor: colors.line },
-  remCardOverdue: { borderColor: colors.danger, backgroundColor: '#FFF8F8' },
-  remCardDone: { opacity: 0.7 },
-  remIcon: { width: 42, height: 42, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
-  remBody: { flex: 1, gap: 4 },
+  title: { color: colors.ink, fontSize: 32, lineHeight: 36, fontWeight: '900', letterSpacing: -1, marginTop: 4 },
+  sub: { color: colors.muted, fontSize: 14, marginTop: 4 },
+  
+  addBtn: { width: 48, height: 48, borderRadius: 24, backgroundColor: colors.brand, alignItems: 'center', justifyContent: 'center', shadowColor: colors.brand, shadowOpacity: 0.3, shadowRadius: 8, shadowOffset: {width: 0, height: 4}, elevation: 4 },
+  
+  emptyContainer: { alignItems: 'center', justifyContent: 'center', paddingVertical: 64, paddingHorizontal: space.lg },
+  emptyIconWrap: { width: 80, height: 80, borderRadius: 40, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center', marginBottom: space.md },
+  emptyTitle: { color: colors.ink, fontSize: 20, fontWeight: '800', marginBottom: 8 },
+  emptyCopy: { color: colors.muted, fontSize: 15, textAlign: 'center', lineHeight: 22 },
+  
+  list: { marginTop: space.lg, gap: space.md },
+  remCard: { backgroundColor: colors.surface, borderRadius: radius.xl, padding: space.md, shadowColor: colors.ink, shadowOpacity: 0.04, shadowRadius: 12, shadowOffset: {width: 0, height: 4}, elevation: 2 },
+  remCardOverdue: { borderWidth: 1, borderColor: colors.danger, backgroundColor: '#FFFDFD' },
+  
+  remCardHeader: { flexDirection: 'row', gap: space.md },
+  remIcon: { width: 48, height: 48, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  remBody: { flex: 1, gap: 4, justifyContent: 'center' },
   remTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 7, flexWrap: 'wrap' },
-  remTitle: { color: colors.ink, fontSize: 14, fontWeight: '900' },
-  remTitleDone: { color: colors.muted },
-  remBodyText: { color: colors.muted, fontSize: 12, lineHeight: 16 },
-  remDate: { color: colors.muted, fontSize: 11 },
+  remTitle: { color: colors.ink, fontSize: 16, fontWeight: '800' },
+  remBodyText: { color: colors.muted, fontSize: 14, lineHeight: 20 },
+  remDate: { color: colors.ink, fontSize: 13, fontWeight: '600', marginTop: 2 },
   remDateOverdue: { color: colors.danger, fontWeight: '800' },
-  remStatusLabel: { color: colors.muted, fontSize: 10, fontWeight: '900', letterSpacing: 0.5 },
-  overdueBadge: { backgroundColor: '#FFE5E5', paddingHorizontal: 7, paddingVertical: 3, borderRadius: radius.pill },
+  
+  overdueBadge: { backgroundColor: '#FFE5E5', paddingHorizontal: 8, paddingVertical: 4, borderRadius: radius.pill },
   overdueBadgeText: { color: colors.danger, fontSize: 9, fontWeight: '900', letterSpacing: 0.5 },
-  remActions: { flexDirection: 'row', gap: 8, marginTop: 6 },
-  actionBtn: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: radius.sm, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line },
-  actionDone: { backgroundColor: colors.success, borderColor: colors.success },
-  actionDoneText: { color: '#fff', fontSize: 12, fontWeight: '900' },
-  actionText: { color: colors.ink, fontSize: 12, fontWeight: '700' },
-  historyDivider: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  divLine: { flex: 1, height: 1, backgroundColor: colors.line },
-  divLabel: { color: colors.muted, fontSize: 9, fontWeight: '900', letterSpacing: 1 },
+  
+  remActions: { flexDirection: 'row', gap: space.sm, marginTop: space.md, paddingTop: space.md, borderTopWidth: 1, borderTopColor: colors.line },
+  actionBtn: { flex: 1, height: 44, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center' },
+  actionDone: { backgroundColor: colors.brand },
+  actionDoneText: { color: '#fff', fontSize: 14, fontWeight: '700' },
+  actionSecondary: { backgroundColor: colors.pearl },
+  actionText: { color: colors.ink, fontSize: 14, fontWeight: '700' },
+  
+  historySection: { marginTop: space.xxl },
+  historyDivider: { marginBottom: space.sm },
+  divLabel: { color: colors.muted, fontSize: 11, fontWeight: '800', letterSpacing: 1 },
+  
+  remCardDoneRow: { flexDirection: 'row', alignItems: 'center', gap: space.md, paddingVertical: space.sm },
+  remIconDone: { width: 32, height: 32, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  remTitleDone: { color: colors.ink, fontWeight: '600', fontSize: 15 },
+  remDateDone: { color: colors.muted, fontSize: 13 },
 });

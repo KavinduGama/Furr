@@ -8,6 +8,7 @@
 import {
   getAuth,
   signInWithPhoneNumber,
+  signInWithEmailAndPassword,
   RecaptchaVerifier,
   onAuthStateChanged,
   signOut as firebaseSignOut,
@@ -49,6 +50,7 @@ export function getRecaptchaVerifier(containerId = 'recaptcha-container'): Recap
 
 /** Clear the verifier — call after auth errors or on unmount. */
 export function clearRecaptchaVerifier(): void {
+  recaptchaVerifier?.clear();
   recaptchaVerifier = null;
 }
 
@@ -81,6 +83,12 @@ export async function verifyOtp(
   code: string,
 ): Promise<User> {
   const result = await confirmationResult.confirm(code);
+  return result.user;
+}
+
+/** Sign in a professional or administrator using Firebase email/password auth. */
+export async function signInWithEmail(email: string, password: string): Promise<User> {
+  const result = await signInWithEmailAndPassword(getAuth(getApp()), email, password);
   return result.user;
 }
 

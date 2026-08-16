@@ -1,9 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { Pressable, StyleSheet, Text, View, ActivityIndicator, Alert } from 'react-native';
+import { Pressable, StyleSheet, Text, View, ActivityIndicator, Alert, ScrollView } from 'react-native';
 import type { VaccinationRecord, MedicationPlan, WeightEntry } from '@furr/core';
 import { colors, radius, space } from '@furr/ui';
-import { Screen } from '@/src/components/screen';
 import { useAuth } from '@/src/context/auth';
 import { usePets } from '@/src/context/pets';
 import { useHealth } from '@/src/context/health';
@@ -53,18 +52,19 @@ export default function CareScreen() {
 
   if (isLoading) {
     return (
-      <Screen>
+      <View style={styles.screen}>
         <View style={styles.loadingBox}>
           <ActivityIndicator color={colors.brand} size="large" />
         </View>
-      </Screen>
+      </View>
     );
   }
 
   const petName = selectedPet?.name ?? 'your pet';
 
   return (
-    <Screen>
+    <View style={styles.screen}>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
       {/* Header */}
       <View style={styles.header}>
         <View>
@@ -312,26 +312,29 @@ export default function CareScreen() {
         </Pressable>
       </View>
 
-      <Pressable
-        accessibilityRole="button"
-        style={styles.docsBanner}
-        onPress={() => router.push('/health/documents' as never)}
-      >
-        <View style={[styles.recordIcon, { backgroundColor: '#F3EEFF' }]}>
-          <Ionicons name="document-text" size={17} color="#7C5CBF" />
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.recordTitle}>
-            {documents.length === 0
-              ? 'No documents uploaded'
-              : `${documents.length} document${documents.length !== 1 ? 's' : ''}`}
-          </Text>
-          <Text style={styles.recordMeta}>
-            {documents.length === 0
-              ? `Upload vaccination cards, prescriptions and lab reports for ${petName}.`
-              : 'Tap to view, or upload another document.'}
-          </Text>
-        </View>
+      <View style={styles.docsBanner}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="View documents"
+          style={styles.docsContent}
+          onPress={() => router.push('/health/documents' as never)}
+        >
+          <View style={[styles.recordIcon, { backgroundColor: '#F3EEFF' }]}>
+            <Ionicons name="document-text" size={17} color="#7C5CBF" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.recordTitle}>
+              {documents.length === 0
+                ? 'No documents uploaded'
+                : `${documents.length} document${documents.length !== 1 ? 's' : ''}`}
+            </Text>
+            <Text style={styles.recordMeta}>
+              {documents.length === 0
+                ? `Upload vaccination cards, prescriptions and lab reports for ${petName}.`
+                : 'Tap to view, or upload another document.'}
+            </Text>
+          </View>
+        </Pressable>
         <Pressable
           accessibilityRole="button"
           style={styles.addBtn}
@@ -339,7 +342,7 @@ export default function CareScreen() {
         >
           <Ionicons name="add" size={20} color="#fff" />
         </Pressable>
-      </Pressable>
+      </View>
 
       {/* ── Share + Reminders + Observations ─────────────────────── */}
       <View style={styles.actionGrid}>
@@ -377,43 +380,55 @@ export default function CareScreen() {
           <Text style={styles.actionSub}>Log a symptom or note</Text>
         </Pressable>
       </View>
-    </Screen>
+    </ScrollView>
+    </View>
   );
 }
 
 // ── Styles ─────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
+  screen: { flex: 1, backgroundColor: colors.canvas },
+  content: { paddingBottom: space.xxl, gap: space.md },
   loadingBox: { flex: 1, alignItems: 'center', justifyContent: 'center', minHeight: 200 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', paddingHorizontal: space.lg, paddingTop: space.md },
   eyebrow: { color: colors.brand, fontWeight: '900', fontSize: 10, letterSpacing: 1.2 },
-  title: { color: colors.ink, fontSize: 31, lineHeight: 35, fontWeight: '900', letterSpacing: -1.2, marginTop: 4 },
-  sub: { color: colors.muted, fontSize: 12, marginTop: 4 },
+  title: { color: colors.ink, fontSize: 32, lineHeight: 36, fontWeight: '900', letterSpacing: -1, marginTop: 4 },
+  sub: { color: colors.muted, fontSize: 14, marginTop: 4 },
   addBtns: { flexDirection: 'row', gap: 8, marginTop: 4 },
-  addBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.brand, alignItems: 'center', justifyContent: 'center' },
-  sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  sectionTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  sectionTitle: { color: colors.muted, fontSize: 10, fontWeight: '900', letterSpacing: 1.2 },
-  addLink: { color: colors.brand, fontSize: 12, fontWeight: '900' },
-  emptyCard: { backgroundColor: colors.surface, borderRadius: radius.md, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1, borderColor: colors.line },
-  emptyTitle: { color: colors.ink, fontSize: 14, fontWeight: '900' },
-  emptyCopy: { color: colors.muted, fontSize: 12, marginTop: 2, lineHeight: 16 },
-  recordCard: { backgroundColor: colors.surface, borderRadius: radius.md, padding: 14, borderWidth: 1, borderColor: colors.line },
-  recordMain: { flexDirection: 'row', alignItems: 'flex-start', gap: 11 },
-  recordIcon: { width: 38, height: 38, borderRadius: 12, backgroundColor: colors.mist, alignItems: 'center', justifyContent: 'center' },
-  recordTitle: { color: colors.ink, fontSize: 15, fontWeight: '900' },
-  recordMeta: { color: colors.muted, fontSize: 12, marginTop: 2 },
-  recordDue: { color: colors.accent, fontSize: 12, fontWeight: '800', marginTop: 2 },
-  badge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: radius.pill, alignSelf: 'flex-start' },
-  badgeText: { fontSize: 10, fontWeight: '900', letterSpacing: 0.4 },
+  addBtn: { width: 48, height: 48, borderRadius: 24, backgroundColor: colors.brand, alignItems: 'center', justifyContent: 'center', shadowColor: colors.brandDark, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 3 },
+  
+  sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: space.sm, paddingHorizontal: space.lg },
+  sectionTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  sectionTitle: { color: colors.ink, fontSize: 15, fontWeight: '900' },
+  addLink: { color: colors.brand, fontSize: 13, fontWeight: '900' },
+  
+  emptyCard: { backgroundColor: colors.surface, borderRadius: radius.xl, padding: 20, flexDirection: 'row', alignItems: 'center', gap: 14, marginHorizontal: space.lg, borderWidth: 1, borderColor: colors.line },
+  emptyTitle: { color: colors.ink, fontSize: 15, fontWeight: '900' },
+  emptyCopy: { color: colors.muted, fontSize: 13, marginTop: 4, lineHeight: 18 },
+  
+  recordCard: { backgroundColor: colors.surface, borderRadius: radius.xl, padding: 18, shadowColor: colors.ink, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.04, shadowRadius: 12, elevation: 2, marginHorizontal: space.lg },
+  recordMain: { flexDirection: 'row', alignItems: 'flex-start', gap: 14 },
+  recordIcon: { width: 44, height: 44, borderRadius: 16, backgroundColor: colors.mist, alignItems: 'center', justifyContent: 'center' },
+  recordTitle: { color: colors.ink, fontSize: 16, fontWeight: '900' },
+  recordMeta: { color: colors.muted, fontSize: 13, marginTop: 3 },
+  recordDue: { color: colors.accent, fontSize: 13, fontWeight: '800', marginTop: 3 },
+  
+  badge: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: radius.pill, alignSelf: 'flex-start' },
+  badgeText: { fontSize: 11, fontWeight: '900', letterSpacing: 0.4 },
+  
   comingSoon: { backgroundColor: colors.brand, paddingHorizontal: 8, paddingVertical: 4, borderRadius: radius.pill },
   comingSoonText: { color: '#fff', fontSize: 9, fontWeight: '900', letterSpacing: 0.5 },
-  timelineLink: { flexDirection: 'row', alignItems: 'center', gap: 7, justifyContent: 'center', paddingVertical: 10, backgroundColor: colors.mist, borderRadius: radius.md },
-  timelineLinkText: { color: colors.brand, fontSize: 13, fontWeight: '900' },
-  docsBanner: { backgroundColor: colors.surface, borderRadius: radius.md, padding: 13, flexDirection: 'row', alignItems: 'center', gap: 11, borderWidth: 1, borderColor: colors.line },
-  actionGrid: { flexDirection: 'row', gap: 10 },
-  actionCard: { flex: 1, backgroundColor: colors.surface, borderRadius: radius.lg, padding: 14, gap: 7, borderWidth: 1, borderColor: colors.line, alignItems: 'flex-start' },
-  actionIcon: { width: 44, height: 44, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
-  actionTitle: { color: colors.ink, fontSize: 14, fontWeight: '900' },
-  actionSub: { color: colors.muted, fontSize: 11, lineHeight: 15 },
+  
+  timelineLink: { flexDirection: 'row', alignItems: 'center', gap: 8, justifyContent: 'center', paddingVertical: 14, backgroundColor: colors.mist, borderRadius: radius.xl, marginHorizontal: space.lg, marginTop: space.sm },
+  timelineLinkText: { color: colors.brand, fontSize: 14, fontWeight: '900' },
+  
+  docsBanner: { backgroundColor: colors.surface, borderRadius: radius.xl, padding: 16, flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1, borderColor: colors.line, marginHorizontal: space.lg },
+  docsContent: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12 },
+  
+  actionGrid: { flexDirection: 'row', gap: 12, marginHorizontal: space.lg },
+  actionCard: { flex: 1, backgroundColor: colors.surface, borderRadius: radius.xl, padding: 16, gap: 10, borderWidth: 1, borderColor: colors.line, alignItems: 'flex-start', shadowColor: colors.ink, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.02, shadowRadius: 8 },
+  actionIcon: { width: 48, height: 48, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+  actionTitle: { color: colors.ink, fontSize: 15, fontWeight: '900' },
+  actionSub: { color: colors.muted, fontSize: 12, lineHeight: 16 },
 });

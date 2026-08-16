@@ -1,0 +1,9 @@
+{
+  "name": "@furr/clinic",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Furr Clinic Operator app — planned for post-MVP release.",
+  "scripts": {
+    "typecheck": "echo 'furr-clinic: not yet implemented'"
+  }
+}
