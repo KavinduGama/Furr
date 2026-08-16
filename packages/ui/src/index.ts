@@ -18,3 +18,4 @@ export { OtpInput } from './components/OtpInput';
 export type { OtpInputProps } from './components/OtpInput';
 
 export { KeyboardScreen } from './components/KeyboardScreen';
+export { ErrorBoundary } from './components/ErrorBoundary';

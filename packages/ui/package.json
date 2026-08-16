@@ -9,6 +9,8 @@
   },
   "peerDependencies": {
     "react": ">=19.0.0",
-    "react-native": ">=0.76.0"
+    "react-native": ">=0.76.0",
+    "expo-haptics": "*",
+    "react-native-reanimated": "*"
   }
 }

@@ -3,9 +3,22 @@ import { View, Text, StyleSheet, ScrollView, Pressable, Alert } from 'react-nati
 import { router, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import * as Location from 'expo-location';
 import { colors, radius, space, Button } from '@furr/ui';
 import { useCare } from '@/src/context/care';
 import { usePets } from '@/src/context/pets';
+
+function getDistanceFromLatLonInKm(lat1: number, lon1: number, lat2: number, lon2: number) {
+  const R = 6371; // Radius of the earth in km
+  const dLat = (lat2 - lat1) * (Math.PI / 180);
+  const dLon = (lon2 - lon1) * (Math.PI / 180);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
 
 export default function WalkTrackerScreen() {
   const { walks, recordWalk } = useCare();
@@ -19,24 +32,70 @@ export default function WalkTrackerScreen() {
   const [isSaving, setIsSaving] = useState(false);
 
   const timerRef = useRef<any>(null);
+  const locationSubRef = useRef<Location.LocationSubscription | null>(null);
+  const lastLocationRef = useRef<{ latitude: number; longitude: number } | null>(null);
 
   useEffect(() => {
     if (isWalking) {
+      // Start duration timer
       timerRef.current = setInterval(() => {
-        setSeconds((prev) => {
-          const next = prev + 1;
-          // Approximate walking speed: 4.5 km/h -> ~0.00125 km per second
-          if (next % 10 === 0) {
-            setDistanceKm((d) => Math.round((d + 0.012) * 100) / 100);
-          }
-          return next;
-        });
+        setSeconds((prev) => prev + 1);
       }, 1000);
+
+      // Start GPS location watcher
+      void (async () => {
+        try {
+          const { status } = await Location.requestForegroundPermissionsAsync();
+          if (status === 'granted') {
+            locationSubRef.current = await Location.watchPositionAsync(
+              {
+                accuracy: Location.Accuracy.High,
+                distanceInterval: 5, // update every 5 meters
+                timeInterval: 3000,
+              },
+              (location) => {
+                const { latitude, longitude } = location.coords;
+                if (lastLocationRef.current) {
+                  const delta = getDistanceFromLatLonInKm(
+                    lastLocationRef.current.latitude,
+                    lastLocationRef.current.longitude,
+                    latitude,
+                    longitude
+                  );
+                  // Filter out GPS drift / jumps > 1km in 3s
+                  if (delta > 0.002 && delta < 0.2) {
+                    setDistanceKm((prev) => Math.round((prev + delta) * 100) / 100);
+                  }
+                }
+                lastLocationRef.current = { latitude, longitude };
+              }
+            );
+          }
+        } catch {
+          // Fallback if GPS unavailable
+        }
+      })();
     } else {
-      if (timerRef.current) clearInterval(timerRef.current);
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+      if (locationSubRef.current) {
+        locationSubRef.current.remove();
+        locationSubRef.current = null;
+      }
+      lastLocationRef.current = null;
     }
+
     return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+      if (locationSubRef.current) {
+        locationSubRef.current.remove();
+        locationSubRef.current = null;
+      }
     };
   }, [isWalking]);
 

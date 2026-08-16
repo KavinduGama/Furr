@@ -13,7 +13,8 @@ const STATUS_CONFIG: Record<
   placed: { label: 'Order Placed', color: '#D97706', bg: '#FEF3C7', icon: 'receipt' },
   confirmed: { label: 'Confirmed', color: '#2563EB', bg: '#DBEAFE', icon: 'checkmark-circle' },
   processing: { label: 'Packing', color: '#7C3AED', bg: '#EDE9FE', icon: 'cube' },
-  shipped: { label: 'Out for Delivery', color: '#059669', bg: '#D1FAE5', icon: 'bicycle' },
+  shipped: { label: 'Shipped', color: '#059669', bg: '#D1FAE5', icon: 'airplane' },
+  out_for_delivery: { label: 'Out for Delivery', color: '#D97706', bg: '#FEF3C7', icon: 'bicycle' },
   delivered: { label: 'Delivered', color: colors.success, bg: colors.calm, icon: 'home' },
   cancelled: { label: 'Cancelled', color: colors.danger, bg: '#FEE2E2', icon: 'close-circle' },
 };

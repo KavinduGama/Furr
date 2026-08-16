@@ -48,7 +48,7 @@ export interface CartItem {
   quantity: number;
 }
 
-export type OrderStatus = 'placed' | 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
+export type OrderStatus = 'placed' | 'confirmed' | 'processing' | 'shipped' | 'out_for_delivery' | 'delivered' | 'cancelled';
 
 export interface OrderAddress {
   fullName: string;
@@ -67,6 +67,7 @@ export interface Order {
   discount: number;
   total: number;
   status: OrderStatus;
+  trackingNumber?: string;
   shippingAddress: OrderAddress;
   paymentMethod: 'card' | 'cod' | 'wallet';
   createdAt: string;

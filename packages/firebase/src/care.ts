@@ -166,12 +166,27 @@ export function subscribeToWalks(
   };
 }
 
+import { IS_DEV_BYPASS } from './env';
+
 export async function logMealFeed(data: Omit<FeedingLog, 'id' | 'fedAt'>): Promise<FeedingLog> {
   const log: FeedingLog = {
     ...data,
     id: 'flog-' + Date.now(),
     fedAt: new Date().toISOString(),
   };
+
+  if (!IS_DEV_BYPASS) {
+    try {
+      const { getFirestore, collection, doc, setDoc } = await import('firebase/firestore');
+      const db = getFirestore();
+      const ref = doc(collection(db, 'care_feeding_logs'));
+      log.id = ref.id;
+      await setDoc(ref, log);
+    } catch (e) {
+      console.warn('Failed to persist feeding log to Firestore:', e);
+    }
+  }
+
   return log;
 }
 
@@ -180,6 +195,19 @@ export async function saveWalkActivity(data: Omit<WalkActivity, 'id'>): Promise<
     ...data,
     id: 'walk-' + Date.now(),
   };
+
+  if (!IS_DEV_BYPASS) {
+    try {
+      const { getFirestore, collection, doc, setDoc } = await import('firebase/firestore');
+      const db = getFirestore();
+      const ref = doc(collection(db, 'care_walk_activities'));
+      walk.id = ref.id;
+      await setDoc(ref, walk);
+    } catch (e) {
+      console.warn('Failed to persist walk activity to Firestore:', e);
+    }
+  }
+
   return walk;
 }
 
@@ -189,5 +217,18 @@ export async function saveTrainingLog(data: Omit<TrainingLog, 'id' | 'loggedAt'>
     id: 'train-' + Date.now(),
     loggedAt: new Date().toISOString(),
   };
+
+  if (!IS_DEV_BYPASS) {
+    try {
+      const { getFirestore, collection, doc, setDoc } = await import('firebase/firestore');
+      const db = getFirestore();
+      const ref = doc(collection(db, 'care_training_logs'));
+      log.id = ref.id;
+      await setDoc(ref, log);
+    } catch (e) {
+      console.warn('Failed to persist training log to Firestore:', e);
+    }
+  }
+
   return log;
 }

@@ -258,7 +258,23 @@ export async function toggleMeetupRsvp(
   meetupId: string,
   userUid: string
 ): Promise<boolean> {
-  // In local state/Firestore, toggles userUid in rsvpUids and updates count
+  try {
+    const { getFirestore, doc, getDoc, updateDoc, arrayUnion, arrayRemove, increment } = await import('firebase/firestore');
+    const db = getFirestore();
+    const ref = doc(db, 'community_meetups', meetupId);
+    const snap = await getDoc(ref);
+    if (snap.exists()) {
+      const data = snap.data();
+      const hasRsvped = (data.rsvpUids || []).includes(userUid);
+      await updateDoc(ref, {
+        rsvpUids: hasRsvped ? arrayRemove(userUid) : arrayUnion(userUid),
+        rsvpCount: hasRsvped ? increment(-1) : increment(1),
+      });
+      return !hasRsvped;
+    }
+  } catch (e) {
+    console.warn('Failed to toggle meetup RSVP on Firestore:', e);
+  }
   return true;
 }
 
@@ -278,7 +294,7 @@ export async function createQuestion(
     };
     await setDoc(newRef, question);
     return question;
-  } catch (e) {
+  } catch {
     const mockQuestion: ForumQuestion = {
       ...data,
       id: 'q-' + Date.now(),
@@ -301,5 +317,18 @@ export async function addAnswer(
     upvotedUids: [],
     createdAt: new Date().toISOString(),
   };
+
+  try {
+    const { getFirestore, doc, updateDoc, arrayUnion, increment } = await import('firebase/firestore');
+    const db = getFirestore();
+    const ref = doc(db, 'community_questions', questionId);
+    await updateDoc(ref, {
+      answers: arrayUnion(answer),
+      answersCount: increment(1),
+    });
+  } catch (e) {
+    console.warn('Failed to persist answer to Firestore:', e);
+  }
+
   return answer;
 }

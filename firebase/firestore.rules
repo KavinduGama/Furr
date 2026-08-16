@@ -141,30 +141,30 @@ service cloud.firestore {
 
     // Care Feeding Schedules
     match /care_feeding_schedules/{docId} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update, delete: if isSignedIn();
+      allow read: if isSignedIn() && (resource.data.ownerUid == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && request.resource.data.ownerUid == request.auth.uid;
+      allow update, delete: if isSignedIn() && (resource.data.ownerUid == request.auth.uid || isAdmin());
     }
 
     // Care Walk Activities
     match /care_walk_activities/{docId} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update, delete: if isSignedIn();
+      allow read: if isSignedIn() && (resource.data.ownerUid == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && request.resource.data.ownerUid == request.auth.uid;
+      allow update, delete: if isSignedIn() && (resource.data.ownerUid == request.auth.uid || isAdmin());
     }
 
     // Family Members
     match /family_members/{docId} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update, delete: if isSignedIn();
+      allow read: if isSignedIn() && (resource.data.ownerUid == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && request.resource.data.ownerUid == request.auth.uid;
+      allow update, delete: if isSignedIn() && (resource.data.ownerUid == request.auth.uid || isAdmin());
     }
 
     // Insurance Policies
     match /insurance_policies/{docId} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update, delete: if isSignedIn();
+      allow read: if isSignedIn() && (resource.data.ownerUid == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && request.resource.data.ownerUid == request.auth.uid;
+      allow update, delete: if isSignedIn() && (resource.data.ownerUid == request.auth.uid || isAdmin());
     }
 
     // Lost Pet Alerts
@@ -235,8 +235,8 @@ service cloud.firestore {
 
     // Telemedicine Messages
     match /telemedicine_messages/{docId} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn();
+      allow read: if isSignedIn() && (resource.data.senderUid == request.auth.uid || resource.data.receiverUid == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && request.resource.data.senderUid == request.auth.uid;
       allow update, delete: if isAdmin();
     }
 

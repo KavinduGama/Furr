@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.cleanupExpiredGrants = exports.onOrderStatusUpdated = exports.onTelehealthMessageSent = exports.onLostPetAlertCreated = void 0;
+exports.cleanupExpiredGrants = exports.redeemGrantCode = exports.onOrderStatusUpdated = exports.onTelehealthMessageSent = exports.onLostPetAlertCreated = void 0;
 const admin = __importStar(require("firebase-admin"));
 // Initialize Firebase Admin SDK
 if (!admin.apps.length) {
@@ -46,6 +46,9 @@ var telehealthChatNotification_1 = require("./triggers/telehealthChatNotificatio
 Object.defineProperty(exports, "onTelehealthMessageSent", { enumerable: true, get: function () { return telehealthChatNotification_1.onTelehealthMessageSent; } });
 var orderDispatchedNotification_1 = require("./triggers/orderDispatchedNotification");
 Object.defineProperty(exports, "onOrderStatusUpdated", { enumerable: true, get: function () { return orderDispatchedNotification_1.onOrderStatusUpdated; } });
+// ── Callables ─────────────────────────────────────────────────
+var redeemGrantCode_1 = require("./callable/redeemGrantCode");
+Object.defineProperty(exports, "redeemGrantCode", { enumerable: true, get: function () { return redeemGrantCode_1.redeemGrantCode; } });
 // ── Maintenance ───────────────────────────────────────────────
 var grantExpiryCleaner_1 = require("./maintenance/grantExpiryCleaner");
 Object.defineProperty(exports, "cleanupExpiredGrants", { enumerable: true, get: function () { return grantExpiryCleaner_1.cleanupExpiredGrants; } });

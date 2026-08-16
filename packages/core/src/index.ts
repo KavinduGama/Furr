@@ -78,6 +78,8 @@ export type OwnerProfile = {
   emailVerified?: boolean;
   /** Sri Lankan district (from ADM-003 reference list). */
   district?: string;
+  /** Expo Push Notification Token for background alerts. */
+  expoPushToken?: string;
   /** IANA timezone string. Default: "Asia/Colombo". */
   timezone: string;
   notificationsEnabled: boolean;

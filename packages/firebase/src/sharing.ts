@@ -160,9 +160,11 @@ export async function revokeGrant(ownerUid: string, grantId: string): Promise<vo
 
 export async function redeemGrant(code: string, vetUid: string): Promise<AccessGrant> {
   const now = new Date().toISOString();
+  const cleanCode = code.trim().toUpperCase();
+
   if (IS_DEV_BYPASS) {
     const grantIndex = devGrants.findIndex(
-      (g) => g.redemptionCode === code && g.status === 'active' && g.codeExpiresAt > now && !g.redeemedAt
+      (g) => g.redemptionCode === cleanCode && g.status === 'active' && g.codeExpiresAt > now && !g.redeemedAt
     );
     if (grantIndex === -1) throw new Error('Invalid or expired code');
     
@@ -183,10 +185,16 @@ export async function redeemGrant(code: string, vetUid: string): Promise<AccessG
     return redeemedGrant;
   }
   
-  // Real Firestore logic would use a Cloud Function because we need to query by code across all users,
-  // or use a root collection for `redemptionCodes` -> point to owner grant.
-  // For MVP, we will rely on Dev-Bypass.
-  throw new Error('Not implemented for real Firestore yet (requires Cloud Functions)');
+  try {
+    const { getFunctions, httpsCallable } = await import('firebase/functions');
+    const functions = getFunctions();
+    const callRedeem = httpsCallable<{ code: string }, { success: boolean; grant: AccessGrant }>(functions, 'redeemGrantCode');
+    const result = await callRedeem({ code: cleanCode });
+    return result.data.grant;
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Failed to redeem grant code.';
+    throw new Error(message);
+  }
 }
 
 export async function getVetActiveGrants(vetUid: string): Promise<AccessGrant[]> {
@@ -196,12 +204,34 @@ export async function getVetActiveGrants(vetUid: string): Promise<AccessGrant[]>
       (g) => g.redeemedByUid === vetUid && g.status === 'redeemed' && g.grantExpiresAt && g.grantExpiresAt > now
     );
   }
-  return [];
+  try {
+    const { getFirestore, collectionGroup, query, where, getDocs } = await import('firebase/firestore');
+    const db = getFirestore();
+    const q = query(
+      collectionGroup(db, 'grants'),
+      where('redeemedByUid', '==', vetUid),
+      where('status', '==', 'redeemed'),
+      where('grantExpiresAt', '>', now)
+    );
+    const snap = await getDocs(q);
+    return snap.docs.map((d) => d.data() as AccessGrant);
+  } catch {
+    return [];
+  }
 }
 
 export async function getGrant(grantId: string): Promise<AccessGrant | null> {
   if (IS_DEV_BYPASS) {
     return devGrants.find((g) => g.id === grantId) || null;
   }
-  return null; // For MVP, dev bypass only
+  try {
+    const { getFirestore, collectionGroup, query, where, limit, getDocs } = await import('firebase/firestore');
+    const db = getFirestore();
+    const q = query(collectionGroup(db, 'grants'), where('id', '==', grantId), limit(1));
+    const snap = await getDocs(q);
+    if (snap.empty) return null;
+    return snap.docs[0].data() as AccessGrant;
+  } catch {
+    return null;
+  }
 }

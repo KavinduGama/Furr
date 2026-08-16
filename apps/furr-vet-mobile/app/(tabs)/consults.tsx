@@ -17,13 +17,13 @@ import type { Consultation } from '@furr/core';
 
 export default function VetConsultsScreen() {
   const { consultations, messages, sendMessage } = useVetConsults();
-  const [selectedConsult, setSelectedConsult] = useState<Consultation>(consultations[0]);
+  const [selectedConsult, setSelectedConsult] = useState<Consultation | null>(consultations[0] || null);
   const [replyText, setReplyText] = useState('');
 
-  const currentMessages = messages[selectedConsult.id] || [];
+  const currentMessages = selectedConsult ? (messages[selectedConsult.id] || []) : [];
 
   const handleSend = () => {
-    if (!replyText.trim()) return;
+    if (!selectedConsult || !replyText.trim()) return;
     sendMessage(selectedConsult.id, replyText);
     setReplyText('');
   };
@@ -49,9 +49,10 @@ export default function VetConsultsScreen() {
             keyExtractor={(item) => item.id}
             showsHorizontalScrollIndicator={false}
             renderItem={({ item }) => {
-              const isSelected = selectedConsult.id === item.id;
+              const isSelected = selectedConsult?.id === item.id;
               return (
                 <Pressable
+                  key={item.id}
                   onPress={() => setSelectedConsult(item)}
                   style={[styles.caseChip, isSelected && styles.caseChipSelected]}
                 >
@@ -73,17 +74,24 @@ export default function VetConsultsScreen() {
         </View>
 
         {/* Selected Case Summary Card */}
-        <View style={styles.caseDetailsCard}>
-          <View style={styles.caseRow}>
-            <Text style={styles.caseHeading}>
-              {selectedConsult.petName} · {selectedConsult.ownerName}
+        {selectedConsult ? (
+          <View style={styles.caseDetailsCard}>
+            <View style={styles.caseRow}>
+              <Text style={styles.caseHeading}>
+                {selectedConsult.petName} · {selectedConsult.ownerName}
+              </Text>
+              <Text style={styles.caseDuration}>{selectedConsult.duration}</Text>
+            </View>
+            <Text style={styles.symptomsText} numberOfLines={2}>
+              Symptoms: {selectedConsult.symptoms}
             </Text>
-            <Text style={styles.caseDuration}>{selectedConsult.duration}</Text>
           </View>
-          <Text style={styles.symptomsText} numberOfLines={2}>
-            Symptoms: {selectedConsult.symptoms}
-          </Text>
-        </View>
+        ) : (
+          <View style={styles.caseDetailsCard}>
+            <Text style={styles.caseHeading}>No Active Consultations</Text>
+            <Text style={styles.symptomsText}>All triage queues are currently clear.</Text>
+          </View>
+        )}
 
         {/* Message Thread */}
         <FlatList

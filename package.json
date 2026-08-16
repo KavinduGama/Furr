@@ -9,6 +9,7 @@
     "admin": "pnpm --filter @furr/admin start",
     "vet:dev": "pnpm --filter @furr/vet dev",
     "admin:dev": "pnpm --filter @furr/admin dev",
+    "test": "pnpm -r --if-present test",
     "typecheck": "pnpm -r --if-present typecheck",
     "lint": "pnpm -r --if-present lint"
   }

@@ -158,6 +158,8 @@ export function subscribeToInsurance(
   };
 }
 
+import { IS_DEV_BYPASS } from './env';
+
 export async function inviteFamilyMember(
   data: Omit<FamilyMember, 'id' | 'joinedAt'>
 ): Promise<FamilyMember> {
@@ -166,6 +168,19 @@ export async function inviteFamilyMember(
     id: 'fam-' + Date.now(),
     joinedAt: new Date().toISOString(),
   };
+
+  if (!IS_DEV_BYPASS) {
+    try {
+      const { getFirestore, collection, doc, setDoc } = await import('firebase/firestore');
+      const db = getFirestore();
+      const ref = doc(collection(db, 'family_members'));
+      member.id = ref.id;
+      await setDoc(ref, member);
+    } catch (e) {
+      console.warn('Failed to persist family member to Firestore:', e);
+    }
+  }
+
   return member;
 }
 
@@ -178,5 +193,18 @@ export async function submitInsuranceClaim(
     status: 'submitted',
     submittedAt: new Date().toISOString(),
   };
+
+  if (!IS_DEV_BYPASS) {
+    try {
+      const { getFirestore, collection, doc, setDoc } = await import('firebase/firestore');
+      const db = getFirestore();
+      const ref = doc(collection(db, 'insurance_claims'));
+      claim.id = ref.id;
+      await setDoc(ref, claim);
+    } catch (e) {
+      console.warn('Failed to persist insurance claim to Firestore:', e);
+    }
+  }
+
   return claim;
 }

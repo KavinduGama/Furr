@@ -17,6 +17,7 @@ import { CommunityProvider } from '@/src/context/community';
 import { CareProvider } from '@/src/context/care';
 import { LostFoundProvider } from '@/src/context/lostfound';
 import { FamilyProvider } from '@/src/context/family';
+import { ErrorBoundary } from '@furr/ui';
 import { AuthNavigationGuard } from '@/src/components/AuthNavigationGuard';
 import {
   firebaseOptionsFromEnvironment,
@@ -33,39 +34,41 @@ initFirebase(firebaseOptionsFromEnvironment(process.env as Record<string, string
 
 export default function RootLayout() {
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <BottomSheetModalProvider>
-        <AuthProvider>
-          <SubscriptionProvider>
-            <PetProvider>
-              <HealthProvider>
-                <ExpenseProvider>
-                  <RoutineProvider>
-                    <MarketplaceProvider>
-                      <ServicesProvider>
-                        <TelemedicineProvider>
-                          <CommunityProvider>
-                            <CareProvider>
-                              <LostFoundProvider>
-                                <FamilyProvider>
-                                  <AuthNavigationGuard>
-                                    <StatusBar style="dark" />
-                                    <Stack screenOptions={{ headerShown: false, animation: 'fade' }} />
-                                  </AuthNavigationGuard>
-                                </FamilyProvider>
-                              </LostFoundProvider>
-                            </CareProvider>
-                          </CommunityProvider>
-                        </TelemedicineProvider>
-                      </ServicesProvider>
-                    </MarketplaceProvider>
-                  </RoutineProvider>
-                </ExpenseProvider>
-              </HealthProvider>
-            </PetProvider>
-          </SubscriptionProvider>
-        </AuthProvider>
-      </BottomSheetModalProvider>
-    </GestureHandlerRootView>
+    <ErrorBoundary>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <BottomSheetModalProvider>
+          <AuthProvider>
+            <SubscriptionProvider>
+              <PetProvider>
+                <HealthProvider>
+                  <ExpenseProvider>
+                    <RoutineProvider>
+                      <MarketplaceProvider>
+                        <ServicesProvider>
+                          <TelemedicineProvider>
+                            <CommunityProvider>
+                              <CareProvider>
+                                <LostFoundProvider>
+                                  <FamilyProvider>
+                                    <AuthNavigationGuard>
+                                      <StatusBar style="dark" />
+                                      <Stack screenOptions={{ headerShown: false, animation: 'fade' }} />
+                                    </AuthNavigationGuard>
+                                  </FamilyProvider>
+                                </LostFoundProvider>
+                              </CareProvider>
+                            </CommunityProvider>
+                          </TelemedicineProvider>
+                        </ServicesProvider>
+                      </MarketplaceProvider>
+                    </RoutineProvider>
+                  </ExpenseProvider>
+                </HealthProvider>
+              </PetProvider>
+            </SubscriptionProvider>
+          </AuthProvider>
+        </BottomSheetModalProvider>
+      </GestureHandlerRootView>
+    </ErrorBoundary>
   );
 }
