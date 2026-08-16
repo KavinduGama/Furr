@@ -13,6 +13,7 @@ import { RoutineProvider } from '@/src/context/routines';
 import { MarketplaceProvider } from '@/src/context/marketplace';
 import { ServicesProvider } from '@/src/context/services';
 import { TelemedicineProvider } from '@/src/context/telemedicine';
+import { CommunityProvider } from '@/src/context/community';
 import { AuthNavigationGuard } from '@/src/components/AuthNavigationGuard';
 import {
   firebaseOptionsFromEnvironment,
@@ -40,10 +41,12 @@ export default function RootLayout() {
                     <MarketplaceProvider>
                       <ServicesProvider>
                         <TelemedicineProvider>
-                          <AuthNavigationGuard>
-                            <StatusBar style="dark" />
-                            <Stack screenOptions={{ headerShown: false, animation: 'fade' }} />
-                          </AuthNavigationGuard>
+                          <CommunityProvider>
+                            <AuthNavigationGuard>
+                              <StatusBar style="dark" />
+                              <Stack screenOptions={{ headerShown: false, animation: 'fade' }} />
+                            </AuthNavigationGuard>
+                          </CommunityProvider>
                         </TelemedicineProvider>
                       </ServicesProvider>
                     </MarketplaceProvider>
