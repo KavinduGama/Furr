@@ -1,103 +1,180 @@
 'use client';
 
-import { useState } from 'react';
-
-const MOCK_USERS = [
-  { id: 'usr_81920', phone: '+94000000001', role: 'owner', status: 'ACTIVE', lastLogin: '2026-08-10T19:00:00Z', petsCount: 2 },
-  { id: 'usr_11929', email: 'dr.smith@example.com', role: 'vet', status: 'ACTIVE', lastLogin: '2026-08-09T11:00:00Z' },
-  { id: 'usr_55912', phone: '+94000000002', role: 'owner', status: 'SUSPENDED', lastLogin: '2026-07-20T10:00:00Z', petsCount: 1 },
-];
+import React, { useState } from 'react';
+import { useAdmin, AdminUserAccount } from '@/context/AdminContext';
 
 export default function UserSupportDesk() {
+  const { users, toggleUserStatus, changeUserRole } = useAdmin();
   const [searchTerm, setSearchTerm] = useState('');
-  
-  const filteredUsers = MOCK_USERS.filter(u => 
-    u.id.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    (u.phone && u.phone.includes(searchTerm)) || 
-    (u.email && u.email.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
+  const [roleFilter, setRoleFilter] = useState<'all' | AdminUserAccount['role']>('all');
+  const [selectedUser, setSelectedUser] = useState<AdminUserAccount | null>(null);
+
+  const filteredUsers = users.filter((u) => {
+    const matchesSearch =
+      u.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (u.name && u.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (u.phone && u.phone.includes(searchTerm)) ||
+      (u.email && u.email.toLowerCase().includes(searchTerm.toLowerCase()));
+
+    const matchesRole = roleFilter === 'all' || u.role === roleFilter;
+    return matchesSearch && matchesRole;
+  });
 
   return (
-    <div className="space-y-6 max-w-5xl">
-      <div>
-        <h1 className="text-3xl font-black text-[#02202B] tracking-tight">User Support</h1>
-        <p className="text-stone-500 mt-1">Manage user accounts and investigate issues (No private pet data exposed).</p>
-      </div>
-
-      <div className="bg-white rounded-xl shadow-sm border border-stone-200 overflow-hidden p-6">
-        <div className="mb-6 flex gap-4">
-          <input 
-            type="text" 
-            placeholder="Search by ID, Phone, or Email..." 
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="flex-1 bg-stone-50 border border-stone-200 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#62A48C]"
-            aria-label="Search users"
-          />
-          {searchTerm && (
-            <button 
-              onClick={() => setSearchTerm('')} 
-              className="bg-stone-200 hover:bg-stone-300 text-stone-700 font-bold px-4 py-2 rounded-lg transition-colors text-sm"
-              type="button"
-            >
-              Clear
-            </button>
-          )}
+    <div className="space-y-6 max-w-6xl">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-3xl font-black text-[#02202B] tracking-tight">User Directory &amp; Support</h1>
+          <p className="text-stone-500 text-sm mt-1">
+            Search user identities, manage permissions, resolve support inquiries, and control account standing.
+          </p>
         </div>
 
-        <table className="w-full text-left border-collapse">
+        <div className="flex gap-2 bg-stone-200/60 p-1 rounded-2xl">
+          {(['all', 'owner', 'vet', 'clinic_staff', 'admin'] as const).map((r) => (
+            <button
+              key={r}
+              onClick={() => setRoleFilter(r)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold capitalize transition ${
+                roleFilter === r ? 'bg-white text-[#02202B] shadow-sm' : 'text-stone-600 hover:text-stone-900'
+              }`}
+            >
+              {r.replace('_', ' ')}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Search Input */}
+      <div className="bg-white p-4 rounded-2xl border border-stone-200 shadow-sm flex gap-4">
+        <input
+          type="text"
+          placeholder="Search by User ID, Name, Phone (+94...), or Email..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="flex-1 bg-stone-50 border border-stone-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#006B78]"
+        />
+        {searchTerm && (
+          <button
+            onClick={() => setSearchTerm('')}
+            className="text-xs font-bold text-stone-500 hover:text-stone-800 px-3 py-2"
+          >
+            Clear
+          </button>
+        )}
+      </div>
+
+      {/* Table */}
+      <div className="bg-white rounded-3xl border border-stone-200 shadow-sm overflow-hidden">
+        <table className="w-full text-left text-sm border-collapse">
           <thead>
             <tr className="bg-stone-50 text-stone-500 text-xs uppercase tracking-wider border-b border-stone-200">
-              <th className="p-4 font-bold">User</th>
-              <th className="p-4 font-bold">Role</th>
-              <th className="p-4 font-bold">Status</th>
-              <th className="p-4 font-bold">Details</th>
+              <th className="p-4 font-bold">Account / User</th>
+              <th className="p-4 font-bold">Assigned Role</th>
+              <th className="p-4 font-bold">Standing</th>
+              <th className="p-4 font-bold">Last Activity</th>
               <th className="p-4 font-bold text-right">Actions</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-stone-200">
-            {filteredUsers.length === 0 ? (
-              <tr>
-                <td colSpan={5} className="p-8 text-center text-stone-500">No users found.</td>
-              </tr>
-            ) : (
-              filteredUsers.map((user) => (
-                <tr key={user.id} className="hover:bg-stone-50 transition-colors">
-                  <td className="p-4">
-                    <p className="font-bold text-[#02202B] font-mono text-sm">{user.id}</p>
-                    <p className="text-xs text-stone-500">{user.phone || user.email}</p>
-                  </td>
-                  <td className="p-4 text-sm">
-                    <span className="bg-stone-100 text-stone-700 px-2 py-1 rounded-md text-xs font-bold uppercase tracking-wider">
-                      {user.role}
-                    </span>
-                  </td>
-                  <td className="p-4">
-                    {user.status === 'ACTIVE' ? (
-                      <span className="text-[#62A48C] text-xs font-bold flex items-center gap-1">
-                        <span className="w-2 h-2 bg-[#62A48C] rounded-full"></span> Active
-                      </span>
-                    ) : (
-                      <span className="text-[#E65100] text-xs font-bold flex items-center gap-1">
-                        <span className="w-2 h-2 bg-[#E65100] rounded-full"></span> Suspended
-                      </span>
-                    )}
-                  </td>
-                  <td className="p-4 text-sm text-stone-500">
-                    <p>Last Login: {new Date(user.lastLogin).toLocaleDateString()}</p>
-                    {user.petsCount !== undefined && <p>Registered Pets: {user.petsCount}</p>}
-                  </td>
-                  <td className="p-4 text-right">
-                    <button className="text-sm font-bold text-[#62A48C] hover:text-[#2A6A51] bg-[#EEFAF5] hover:bg-[#D1F0E0] px-4 py-2 rounded-lg transition-colors">
-                      Manage
+          <tbody className="divide-y divide-stone-100">
+            {filteredUsers.map((user) => (
+              <tr key={user.id} className="hover:bg-stone-50/80 transition-colors">
+                <td className="p-4">
+                  <p className="font-bold text-[#02202B]">{user.name}</p>
+                  <p className="text-xs text-stone-500 font-mono">{user.id} · {user.email || user.phone}</p>
+                </td>
+                <td className="p-4">
+                  <select
+                    value={user.role}
+                    onChange={(e) => changeUserRole(user.id, e.target.value as AdminUserAccount['role'])}
+                    className="bg-stone-50 border border-stone-200 rounded-lg px-2.5 py-1 text-xs font-bold text-stone-800 uppercase"
+                  >
+                    <option value="owner">Pet Owner</option>
+                    <option value="vet">Veterinarian</option>
+                    <option value="clinic_staff">Clinic Staff</option>
+                    <option value="admin">Administrator</option>
+                  </select>
+                </td>
+                <td className="p-4">
+                  <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                    user.status === 'ACTIVE' ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'
+                  }`}>
+                    {user.status}
+                  </span>
+                </td>
+                <td className="p-4 text-xs text-stone-500">
+                  <p>Last seen: {new Date(user.lastLogin).toLocaleDateString()}</p>
+                  <p className="text-[10px] text-stone-400">Joined: {user.joinedDate}</p>
+                </td>
+                <td className="p-4 text-right">
+                  <div className="flex items-center justify-end gap-2">
+                    <button
+                      onClick={() => setSelectedUser(user)}
+                      className="px-3 py-1.5 rounded-lg text-xs font-bold bg-stone-100 hover:bg-stone-200 text-stone-800"
+                    >
+                      Inspect Profile
                     </button>
-                  </td>
-                </tr>
-              ))
-            )}
+                    <button
+                      onClick={() => toggleUserStatus(user.id)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+                        user.status === 'ACTIVE'
+                          ? 'bg-red-50 hover:bg-red-100 text-red-700 border border-red-200'
+                          : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                      }`}
+                    >
+                      {user.status === 'ACTIVE' ? 'Suspend' : 'Reactivate'}
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>
+
+      {/* User Details Modal */}
+      {selectedUser && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-stone-200 space-y-4">
+            <div className="flex justify-between items-center pb-3 border-b border-stone-100">
+              <div>
+                <span className="text-[10px] font-black tracking-widest text-[#006B78] uppercase">User Profile Inspection</span>
+                <h2 className="text-xl font-black text-[#02202B]">{selectedUser.name}</h2>
+              </div>
+              <button onClick={() => setSelectedUser(null)} className="text-stone-400 hover:text-stone-700 text-lg font-bold">✕</button>
+            </div>
+
+            <div className="bg-stone-50 p-4 rounded-2xl border border-stone-100 text-xs space-y-2">
+              <p><span className="font-bold text-stone-500">User ID:</span> <span className="font-mono">{selectedUser.id}</span></p>
+              <p><span className="font-bold text-stone-500">Contact:</span> {selectedUser.email || 'N/A'} · {selectedUser.phone || 'N/A'}</p>
+              <p><span className="font-bold text-stone-500">Platform Role:</span> <span className="uppercase font-bold text-[#006B78]">{selectedUser.role}</span></p>
+              <p><span className="font-bold text-stone-500">Account Status:</span> <span className="font-bold">{selectedUser.status}</span></p>
+              <p><span className="font-bold text-stone-500">Registered Pets:</span> {selectedUser.petsCount || 0} pet profiles</p>
+              <p><span className="font-bold text-stone-500">Account Created:</span> {selectedUser.joinedDate}</p>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-3 border-t border-stone-100">
+              <button
+                onClick={() => setSelectedUser(null)}
+                className="px-4 py-2 rounded-xl text-xs font-bold bg-stone-100 hover:bg-stone-200 text-stone-700"
+              >
+                Close
+              </button>
+              <button
+                onClick={() => {
+                  toggleUserStatus(selectedUser.id);
+                  setSelectedUser(null);
+                }}
+                className={`px-4 py-2 rounded-xl text-xs font-bold ${
+                  selectedUser.status === 'ACTIVE' ? 'bg-red-600 text-white' : 'bg-emerald-600 text-white'
+                }`}
+              >
+                {selectedUser.status === 'ACTIVE' ? 'Suspend Account' : 'Reactivate Account'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
