@@ -1,0 +1,25 @@
+{
+  "expo": {
+    "name": "Furr Vet",
+    "slug": "furr-vet-mobile",
+    "scheme": "furrvet",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "plugins": [
+      "expo-router"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "ios": {
+      "bundleIdentifier": "com.furr.vet"
+    },
+    "android": {
+      "package": "com.furr.vet"
+    },
+    "web": {
+      "output": "single"
+    }
+  }
+}

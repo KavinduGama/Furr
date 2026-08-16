@@ -16,7 +16,7 @@ import { demoRecords } from '@furr/core';
 
 // ── Dev-bypass in-memory stores ───────────────────────────────
 
-let devVaccinations: VaccinationRecord[] = demoRecords.filter(r => r.category === 'vaccination') as VaccinationRecord[];
+let devVaccinations: VaccinationRecord[] = demoRecords.filter(r => r.category === 'vaccination') as unknown as VaccinationRecord[];
 let devMedications: MedicationPlan[] = demoRecords.filter(r => r.category === 'medication') as unknown as MedicationPlan[];
 
 function devId(): string {
