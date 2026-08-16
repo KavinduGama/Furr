@@ -123,6 +123,27 @@ export const INITIAL_PROVIDERS: ServiceProvider[] = [
   },
 ];
 
+export const INITIAL_BOOKINGS: ServiceBooking[] = [
+  {
+    id: 'book-1',
+    petId: 'max',
+    petName: 'Max',
+    petSpecies: 'dog',
+    ownerUid: 'demo-uid',
+    providerId: 'prov-1',
+    providerName: 'Paws & Bubbles Luxury Grooming Spa',
+    serviceId: 'srv-1',
+    serviceName: 'Full Luxury Groom & Style',
+    serviceCategory: 'grooming',
+    date: new Date(Date.now() + 24 * 3600000).toISOString().slice(0, 10),
+    timeSlot: '10:30 AM',
+    price: 4500,
+    status: 'confirmed',
+    specialNotes: 'Gentle on front paw sprain',
+    createdAt: new Date().toISOString(),
+  },
+];
+
 export function subscribeToServiceProviders(
   onUpdate: (providers: ServiceProvider[]) => void,
   categoryFilter?: ServiceCategory
