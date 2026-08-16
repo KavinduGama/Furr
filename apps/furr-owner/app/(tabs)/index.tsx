@@ -51,6 +51,49 @@ export default function TodayScreen() {
           </Pressable>
         </ScrollView>
 
+        {/* Quick Actions Grid */}
+        <View style={styles.quickActionsGrid}>
+          <Pressable
+            onPress={() => router.push('/care/feeding' as never)}
+            style={styles.quickActionCard}
+          >
+            <View style={[styles.quickActionIcon, { backgroundColor: '#FFF7ED' }]}>
+              <Text style={{ fontSize: 20 }}>🥩</Text>
+            </View>
+            <Text style={styles.quickActionLabel}>Log Meal</Text>
+          </Pressable>
+
+          <Pressable
+            onPress={() => router.push('/care/walk' as never)}
+            style={styles.quickActionCard}
+          >
+            <View style={[styles.quickActionIcon, { backgroundColor: '#EFF6FF' }]}>
+              <Text style={{ fontSize: 20 }}>🦮</Text>
+            </View>
+            <Text style={styles.quickActionLabel}>Track Walk</Text>
+          </Pressable>
+
+          <Pressable
+            onPress={() => router.push('/telemedicine' as never)}
+            style={styles.quickActionCard}
+          >
+            <View style={[styles.quickActionIcon, { backgroundColor: '#ECFDF5' }]}>
+              <Text style={{ fontSize: 20 }}>🩺</Text>
+            </View>
+            <Text style={styles.quickActionLabel}>Ask a Vet</Text>
+          </Pressable>
+
+          <Pressable
+            onPress={() => router.push('/community' as never)}
+            style={styles.quickActionCard}
+          >
+            <View style={[styles.quickActionIcon, { backgroundColor: colors.softBrand }]}>
+              <Text style={{ fontSize: 20 }}>💬</Text>
+            </View>
+            <Text style={styles.quickActionLabel}>Community</Text>
+          </Pressable>
+        </View>
+
         {/* Widgets Row */}
         {hasPets && (
           <View style={styles.widgetsRow}>
@@ -164,7 +207,37 @@ const styles = StyleSheet.create({
   petAvatarSelected: { borderColor: colors.brand },
   petAvatarEmoji: { fontSize: 32 },
   petAvatarAdd: { width: 64, height: 64, borderRadius: 32, backgroundColor: colors.softBrand, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: colors.brand, borderStyle: 'dashed' },
-  
+  quickActionsGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: space.lg,
+    marginTop: space.lg,
+    gap: space.xs,
+  },
+  quickActionCard: {
+    flex: 1,
+    backgroundColor: colors.surface,
+    borderRadius: radius.xl,
+    paddingVertical: space.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    borderWidth: 1,
+    borderColor: colors.line,
+  },
+  quickActionIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  quickActionLabel: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: colors.ink,
+  },
+
   widgetsRow: { flexDirection: 'column', gap: space.md, paddingHorizontal: space.lg, marginTop: space.lg },
   widget: { backgroundColor: colors.surface, borderRadius: radius.xl, padding: space.lg, shadowColor: colors.ink, shadowOpacity: 0.04, shadowRadius: 12, shadowOffset: {width: 0, height: 4}, elevation: 2 },
   widgetHighlight: { backgroundColor: '#FFFDF5', borderColor: '#FEF3C7', borderWidth: 1 },
