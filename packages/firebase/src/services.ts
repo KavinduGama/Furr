@@ -278,12 +278,38 @@ export async function createServiceBooking(
 }
 
 export async function cancelServiceBooking(bookingId: string): Promise<void> {
+  return updateBookingStatus(bookingId, 'cancelled');
+}
+
+export async function updateBookingStatus(
+  bookingId: string,
+  status: ServiceBooking['status']
+): Promise<void> {
   try {
     const { getFirestore, doc, updateDoc } = await import('firebase/firestore');
     const db = getFirestore();
     const ref = doc(db, 'service_bookings', bookingId);
-    await updateDoc(ref, { status: 'cancelled' });
+    await updateDoc(ref, { status, updatedAt: new Date().toISOString() });
   } catch (e) {
-    console.warn('cancelServiceBooking fallback:', e);
+    console.warn('updateBookingStatus fallback:', e);
   }
 }
+
+export async function updateServiceProvider(
+  providerId: string,
+  updates: Partial<ServiceProvider>
+): Promise<void> {
+  try {
+    const { getFirestore, doc, updateDoc } = await import('firebase/firestore');
+    const db = getFirestore();
+    const ref = doc(db, 'service_providers', providerId);
+    await updateDoc(ref, updates);
+  } catch (e) {
+    console.warn('updateServiceProvider fallback:', e);
+    const prov = INITIAL_PROVIDERS.find((p) => p.id === providerId);
+    if (prov) {
+      Object.assign(prov, updates);
+    }
+  }
+}
+

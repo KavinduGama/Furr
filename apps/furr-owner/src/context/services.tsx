@@ -1,5 +1,11 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
-import type { ServiceProvider, ServiceCategory, ServiceBooking, PaymentProvider } from '@furr/core';
+import type {
+  ServiceProvider,
+  ServiceCategory,
+  ServiceBooking,
+  PaymentProvider,
+  SriLankaLocation,
+} from '@furr/core';
 import {
   subscribeToServiceProviders,
   subscribeToUserBookings,
@@ -11,14 +17,15 @@ import {
   INITIAL_BOOKINGS,
 } from '@furr/firebase';
 import { useAuth } from './auth';
-import { calculateDistanceKm } from '@furr/core';
+import { calculateDistanceKm, SRI_LANKA_LOCATIONS } from '@furr/core';
 
 interface ServicesContextType {
   providers: ServiceProvider[];
   selectedCategory: ServiceCategory | 'all';
   setSelectedCategory: (category: ServiceCategory | 'all') => void;
   filteredProviders: ServiceProvider[];
-  userLocation: { latitude: number; longitude: number } | null;
+  selectedLocation: SriLankaLocation;
+  setSelectedLocation: (location: SriLankaLocation) => void;
   bookings: ServiceBooking[];
   bookService: (
     bookingData: Omit<ServiceBooking, 'id' | 'createdAt' | 'status' | 'ownerUid'>,
@@ -35,7 +42,7 @@ export function ServicesProvider({ children }: { children: React.ReactNode }) {
   const [providers, setProviders] = useState<ServiceProvider[]>(INITIAL_PROVIDERS);
   const [bookings, setBookings] = useState<ServiceBooking[]>(INITIAL_BOOKINGS);
   const [selectedCategory, setSelectedCategory] = useState<ServiceCategory | 'all'>('all');
-  const [userLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [selectedLocation, setSelectedLocation] = useState<SriLankaLocation>(SRI_LANKA_LOCATIONS[0]);
   const [isLoadingLocation] = useState(false);
 
   // Subscribe to live service providers
@@ -58,10 +65,9 @@ export function ServicesProvider({ children }: { children: React.ReactNode }) {
     return () => unsubscribe();
   }, [firebaseUser]);
 
-  // Compute live distances using zero-cost Haversine formula & sort by proximity
+  // Compute live distances using zero-cost Haversine formula & sort by proximity to selectedLocation
   const filteredProviders = useMemo(() => {
-    const defaultCoords = { latitude: 6.9271, longitude: 79.8612 }; // Colombo default
-    const origin = userLocation || defaultCoords;
+    const origin = { latitude: selectedLocation.latitude, longitude: selectedLocation.longitude };
 
     const listWithDistance = providers.map((p) => {
       const distanceKm = calculateDistanceKm(origin, {
@@ -78,7 +84,7 @@ export function ServicesProvider({ children }: { children: React.ReactNode }) {
 
     // Sort closest first, then by rating
     return categoryFiltered.sort((a, b) => (a.distanceKm || 0) - (b.distanceKm || 0));
-  }, [providers, selectedCategory, userLocation]);
+  }, [providers, selectedCategory, selectedLocation]);
 
   const bookService = useCallback(
     async (
@@ -143,7 +149,8 @@ export function ServicesProvider({ children }: { children: React.ReactNode }) {
       selectedCategory,
       setSelectedCategory,
       filteredProviders,
-      userLocation,
+      selectedLocation,
+      setSelectedLocation,
       bookings,
       bookService,
       cancelBooking,
@@ -153,7 +160,7 @@ export function ServicesProvider({ children }: { children: React.ReactNode }) {
       providers,
       selectedCategory,
       filteredProviders,
-      userLocation,
+      selectedLocation,
       bookings,
       bookService,
       cancelBooking,

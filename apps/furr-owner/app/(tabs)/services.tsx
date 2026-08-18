@@ -1,11 +1,11 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, Image } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, Pressable, Image, Modal } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { Screen } from '@/src/components/screen';
 import { colors, radius, space } from '@furr/ui';
-import { SERVICE_CATEGORIES, type ServiceCategory } from '@furr/core';
+import { SERVICE_CATEGORIES, SRI_LANKA_LOCATIONS, type SriLankaLocation } from '@furr/core';
 import { useServices } from '@/src/context/services';
 import { usePets } from '@/src/context/pets';
 
@@ -14,10 +14,12 @@ export default function ServicesTab() {
     filteredProviders,
     selectedCategory,
     setSelectedCategory,
+    selectedLocation,
+    setSelectedLocation,
     bookings,
-    userLocation,
   } = useServices();
   const { selectedPet } = usePets();
+  const [showLocationModal, setShowLocationModal] = useState(false);
 
   const activeBookingsCount = bookings.filter(
     (b) => b.status === 'confirmed' || b.status === 'in_progress'
@@ -29,7 +31,7 @@ export default function ServicesTab() {
         {/* Header */}
         <View style={styles.header}>
           <View>
-            <Text style={styles.eyebrow}>LOCAL EXPERTS</Text>
+            <Text style={styles.eyebrow}>LOCAL SPECIALISTS</Text>
             <Text style={styles.title}>Pet Services</Text>
           </View>
           <Pressable
@@ -47,13 +49,20 @@ export default function ServicesTab() {
           </Pressable>
         </View>
 
-        {/* Location Subtext */}
-        <View style={styles.locationBar}>
-          <Ionicons name="location-sharp" size={14} color={colors.brand} />
+        {/* Location Picker Bar */}
+        <Pressable
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            setShowLocationModal(true);
+          }}
+          style={styles.locationBar}
+        >
+          <Ionicons name="location-sharp" size={16} color={colors.brand} />
           <Text style={styles.locationText}>
-            {userLocation ? 'Showing specialists near you' : 'Showing top specialists in Colombo'}
+            Near <Text style={{ fontWeight: '800', color: colors.ink }}>{selectedLocation.name}</Text>
           </Text>
-        </View>
+          <Ionicons name="chevron-down" size={14} color={colors.muted} />
+        </Pressable>
 
         {/* Category Pills Carousel */}
         <ScrollView
@@ -110,8 +119,8 @@ export default function ServicesTab() {
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>
             {selectedCategory === 'all'
-              ? 'Top Rated Providers'
-              : SERVICE_CATEGORIES.find((c) => c.id === selectedCategory)?.title || 'Providers'}
+              ? 'Nearby Specialists'
+              : SERVICE_CATEGORIES.find((c) => c.id === selectedCategory)?.title || 'Specialists'}
           </Text>
           <Text style={styles.sectionCount}>{filteredProviders.length} available</Text>
         </View>
@@ -121,7 +130,7 @@ export default function ServicesTab() {
           <View style={styles.emptyState}>
             <Ionicons name="cut-outline" size={48} color={colors.muted} />
             <Text style={styles.emptyTitle}>No service providers found</Text>
-            <Text style={styles.emptyCopy}>Try switching to a different service category.</Text>
+            <Text style={styles.emptyCopy}>Try switching location or category.</Text>
           </View>
         ) : (
           <View style={styles.providersList}>
@@ -216,6 +225,66 @@ export default function ServicesTab() {
           </View>
         )}
       </ScrollView>
+
+      {/* Location Picker Modal */}
+      <Modal
+        visible={showLocationModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowLocationModal(false)}
+      >
+        <Pressable
+          style={styles.modalOverlay}
+          onPress={() => setShowLocationModal(false)}
+        >
+          <View style={styles.modalContent} onStartShouldSetResponder={() => true}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Choose District Location</Text>
+              <Pressable
+                onPress={() => setShowLocationModal(false)}
+                style={styles.modalCloseBtn}
+              >
+                <Ionicons name="close" size={20} color={colors.ink} />
+              </Pressable>
+            </View>
+            <Text style={styles.modalSubtitle}>
+              Specialists and clinics will be sorted by proximity to this district.
+            </Text>
+
+            <ScrollView style={{ maxHeight: 380 }} showsVerticalScrollIndicator={false}>
+              {SRI_LANKA_LOCATIONS.map((loc) => {
+                const isSelected = loc.id === selectedLocation.id;
+                return (
+                  <Pressable
+                    key={loc.id}
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                      setSelectedLocation(loc);
+                      setShowLocationModal(false);
+                    }}
+                    style={[styles.locationOption, isSelected && styles.locationOptionActive]}
+                  >
+                    <Ionicons
+                      name="location"
+                      size={18}
+                      color={isSelected ? colors.brand : colors.muted}
+                    />
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.locName, isSelected && styles.locNameActive]}>
+                        {loc.name}
+                      </Text>
+                      <Text style={styles.locProvince}>{loc.province} Province</Text>
+                    </View>
+                    {isSelected && (
+                      <Ionicons name="checkmark-circle" size={18} color={colors.brand} />
+                    )}
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          </View>
+        </Pressable>
+      </Modal>
     </Screen>
   );
 }
@@ -229,27 +298,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
+    backgroundColor: colors.softBrand,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: radius.pill,
-    backgroundColor: colors.softBrand,
-    position: 'relative',
   },
-  bookingsBtnText: { color: colors.brand, fontSize: 13, fontWeight: '800' },
+  bookingsBtnText: { fontSize: 13, fontWeight: '700', color: colors.brand },
   bookingBadge: {
-    position: 'absolute',
-    top: -4,
-    right: -4,
     backgroundColor: colors.brand,
-    minWidth: 18,
-    height: 18,
-    borderRadius: 9,
+    borderRadius: 8,
+    width: 16,
+    height: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: '#FFF',
   },
-  bookingBadgeText: { color: '#FFF', fontSize: 9, fontWeight: '900' },
+  bookingBadgeText: { color: '#FFF', fontSize: 10, fontWeight: '900' },
 
   locationBar: {
     flexDirection: 'row',
@@ -258,7 +321,7 @@ const styles = StyleSheet.create({
     marginTop: space.sm,
     backgroundColor: colors.surface,
     paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingVertical: 8,
     borderRadius: radius.pill,
     alignSelf: 'flex-start',
     borderWidth: 1,
@@ -266,12 +329,12 @@ const styles = StyleSheet.create({
   },
   locationText: { fontSize: 12, color: colors.muted, fontWeight: '600' },
 
-  categoriesRow: { paddingVertical: space.md, gap: 8 },
+  categoriesRow: { gap: space.xs, paddingVertical: space.md },
   categoryPill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: radius.pill,
     backgroundColor: colors.surface,
@@ -279,18 +342,30 @@ const styles = StyleSheet.create({
     borderColor: colors.line,
   },
   categoryPillActive: { backgroundColor: colors.brand, borderColor: colors.brand },
-  categoryPillText: { fontSize: 12, fontWeight: '700', color: colors.ink },
+  categoryPillText: { fontSize: 13, fontWeight: '700', color: colors.muted },
   categoryPillTextActive: { color: '#FFF' },
 
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: space.sm,
+    marginTop: space.xs,
     marginBottom: space.sm,
   },
-  sectionTitle: { fontSize: 17, fontWeight: '800', color: colors.ink },
-  sectionCount: { fontSize: 12, fontWeight: '600', color: colors.muted },
+  sectionTitle: { fontSize: 18, fontWeight: '800', color: colors.ink },
+  sectionCount: { fontSize: 13, color: colors.muted, fontWeight: '600' },
+
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: space.xxl,
+    backgroundColor: colors.surface,
+    borderRadius: radius.xl,
+    marginTop: space.md,
+    gap: space.xs,
+  },
+  emptyTitle: { fontSize: 16, fontWeight: '800', color: colors.ink },
+  emptyCopy: { fontSize: 13, color: colors.muted, textAlign: 'center' },
 
   providersList: { gap: space.md },
   providerCard: {
@@ -299,47 +374,46 @@ const styles = StyleSheet.create({
     padding: space.md,
     borderWidth: 1,
     borderColor: colors.line,
+    shadowColor: colors.ink,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
   },
   providerHeader: { flexDirection: 'row', gap: space.md },
   providerAvatar: { width: 64, height: 64, borderRadius: radius.lg, backgroundColor: colors.mist },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  providerName: { fontSize: 15, fontWeight: '800', color: colors.ink, flex: 1 },
-  providerAddress: { fontSize: 12, color: colors.muted, marginTop: 1 },
-
-  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 4 },
-  ratingBadge: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  providerName: { fontSize: 16, fontWeight: '800', color: colors.ink, flex: 1 },
+  providerAddress: { fontSize: 12, color: colors.muted, marginTop: 2 },
+  metaRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm, marginTop: 4 },
+  ratingBadge: { flexDirection: 'row', alignItems: 'center', gap: 3 },
   ratingText: { fontSize: 12, fontWeight: '800', color: colors.ink },
   reviewCount: { fontSize: 11, color: colors.muted },
   distanceBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 3,
     backgroundColor: colors.softBrand,
     paddingHorizontal: 6,
     paddingVertical: 2,
-    borderRadius: radius.sm,
+    borderRadius: radius.pill,
   },
-  distanceText: { fontSize: 10, fontWeight: '800', color: colors.brand },
+  distanceText: { fontSize: 11, fontWeight: '700', color: colors.brand },
 
-  providerBio: { fontSize: 13, color: colors.muted, marginTop: space.sm, lineHeight: 18 },
+  providerBio: { fontSize: 13, color: colors.muted, lineHeight: 18, marginTop: space.sm },
 
   servicesRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: space.sm },
   servicePill: {
     backgroundColor: colors.canvas,
     paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: radius.md,
+    borderRadius: radius.pill,
     borderWidth: 1,
     borderColor: colors.line,
   },
-  servicePillText: { fontSize: 11, fontWeight: '600', color: colors.ink },
-  servicePillMore: {
-    backgroundColor: colors.mist,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: radius.md,
-  },
-  servicePillMoreText: { fontSize: 11, fontWeight: '700', color: colors.muted },
+  servicePillText: { fontSize: 11, color: colors.ink, fontWeight: '600' },
+  servicePillMore: { paddingHorizontal: 6, paddingVertical: 4 },
+  servicePillMoreText: { fontSize: 11, color: colors.muted, fontWeight: '600' },
 
   cardFooter: {
     flexDirection: 'row',
@@ -355,15 +429,42 @@ const styles = StyleSheet.create({
   bookBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 4,
     backgroundColor: colors.brand,
     paddingHorizontal: 14,
     paddingVertical: 8,
-    borderRadius: radius.lg,
+    borderRadius: radius.pill,
   },
-  bookBtnText: { color: '#FFF', fontSize: 13, fontWeight: '800' },
+  bookBtnText: { color: '#FFF', fontSize: 13, fontWeight: '700' },
 
-  emptyState: { alignItems: 'center', justifyContent: 'center', padding: space.xxl, gap: space.sm },
-  emptyTitle: { fontSize: 17, fontWeight: '800', color: colors.ink },
-  emptyCopy: { fontSize: 13, color: colors.muted, textAlign: 'center' },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: colors.surface,
+    borderTopLeftRadius: radius.xl,
+    borderTopRightRadius: radius.xl,
+    padding: space.xl,
+    paddingBottom: space.xl,
+  },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  modalTitle: { fontSize: 18, fontWeight: '800', color: colors.ink },
+  modalCloseBtn: { padding: 4 },
+  modalSubtitle: { fontSize: 13, color: colors.muted, marginTop: 4, marginBottom: space.md },
+  locationOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.md,
+    paddingVertical: 12,
+    paddingHorizontal: space.sm,
+    borderRadius: radius.lg,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.line,
+  },
+  locationOptionActive: { backgroundColor: colors.softBrand },
+  locName: { fontSize: 14, fontWeight: '700', color: colors.ink },
+  locNameActive: { color: colors.brand, fontWeight: '800' },
+  locProvince: { fontSize: 12, color: colors.muted },
 });

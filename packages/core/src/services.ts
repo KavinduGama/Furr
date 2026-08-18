@@ -72,6 +72,26 @@ export interface ServiceBooking {
   createdAt: string;
 }
 
+export interface SriLankaLocation {
+  id: string;
+  name: string;
+  province: string;
+  latitude: number;
+  longitude: number;
+}
+
+export const SRI_LANKA_LOCATIONS: SriLankaLocation[] = [
+  { id: 'colombo', name: 'Colombo', province: 'Western', latitude: 6.9271, longitude: 79.8612 },
+  { id: 'gampaha', name: 'Gampaha / Negombo', province: 'Western', latitude: 7.0840, longitude: 79.9943 },
+  { id: 'kalutara', name: 'Kalutara / Panadura', province: 'Western', latitude: 6.5854, longitude: 79.9607 },
+  { id: 'kandy', name: 'Kandy', province: 'Central', latitude: 7.2906, longitude: 80.6337 },
+  { id: 'galle', name: 'Galle', province: 'Southern', latitude: 6.0535, longitude: 80.2210 },
+  { id: 'matara', name: 'Matara', province: 'Southern', latitude: 5.9549, longitude: 80.5550 },
+  { id: 'kurunegala', name: 'Kurunegala', province: 'North Western', latitude: 7.4863, longitude: 80.3623 },
+  { id: 'jaffna', name: 'Jaffna', province: 'Northern', latitude: 9.6615, longitude: 80.0255 },
+  { id: 'batticaloa', name: 'Batticaloa', province: 'Eastern', latitude: 7.7310, longitude: 81.6747 },
+];
+
 export function calculateDistanceKm(
   pointA: { latitude: number; longitude: number },
   pointB: { latitude: number; longitude: number }
@@ -89,3 +109,18 @@ export function calculateDistanceKm(
   return Math.round(R * c * 10) / 10;
 }
 
+export function isProviderAvailable(
+  provider: ServiceProvider,
+  dateString: string,
+  _timeSlotString?: string
+): boolean {
+  if (!provider.availableDays || provider.availableDays.length === 0) return true;
+
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) return true;
+
+  const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const dayName = days[date.getDay()];
+
+  return provider.availableDays.includes(dayName);
+}
