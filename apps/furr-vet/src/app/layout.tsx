@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/context/auth";
+import { VetGate } from "@/components/VetGate";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -18,29 +18,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${inter.className} antialiased min-h-screen flex flex-col`}>
+      <body className={`${inter.className} antialiased min-h-screen flex flex-col bg-[#FAF9F5]`}>
         <AuthProvider>
-          <header className="bg-[#FFFEFC] border-b border-[#E8E6E0] sticky top-0 z-50">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-[#006B78] rounded-xl flex items-center justify-center">
-                  <span className="text-white font-black text-sm">F</span>
-                </div>
-                <span className="font-black text-xl tracking-tight text-[#10242D]">FURR <span className="text-[#66757C] font-medium">VET</span></span>
-              </div>
-              <nav className="flex gap-4 items-center">
-                <Link href="/" className="text-sm font-semibold text-[#10242D] hover:text-[#006B78]">Workspace</Link>
-                <Link href="/consults" className="text-sm font-semibold text-[#006B78] bg-[#E6F4F5] px-3 py-1.5 rounded-lg flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                  Telehealth Desk
-                </Link>
-                <span className="hidden sm:block text-sm font-medium text-[#66757C]">Owner-controlled access</span>
-              </nav>
-            </div>
-          </header>
-          <main className="flex-1">
+          <VetGate>
             {children}
-          </main>
+          </VetGate>
         </AuthProvider>
       </body>
     </html>

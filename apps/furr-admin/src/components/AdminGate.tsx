@@ -66,7 +66,7 @@ function AdminHeaderBar() {
             </div>
 
             <p className="text-[10px] font-bold text-stone-400 uppercase tracking-wider px-3 mb-1">Switch Admin Persona (Dev)</p>
-            <div className="space-y-1">
+            <div className="space-y-1 mb-2">
               <button
                 onClick={() => switchRole('Super Administrator', 'admin@furr.lk', 'Global Platform Admin')}
                 className="w-full text-left px-3 py-2 text-xs font-bold hover:bg-stone-50 rounded-xl text-stone-800 transition"
@@ -84,6 +84,20 @@ function AdminHeaderBar() {
                 className="w-full text-left px-3 py-2 text-xs font-bold hover:bg-stone-50 rounded-xl text-stone-800 transition"
               >
                 📦 Marketplace & Ops Lead
+              </button>
+            </div>
+
+            <div className="border-t border-stone-100 pt-2">
+              <button
+                onClick={async () => {
+                  if (firebaseConfigured) {
+                    await signOut().catch(() => {});
+                  }
+                  window.location.reload();
+                }}
+                className="w-full text-left px-3 py-1.5 text-xs font-bold text-red-600 hover:bg-red-50 rounded-lg transition"
+              >
+                🚪 Sign Out
               </button>
             </div>
           </div>

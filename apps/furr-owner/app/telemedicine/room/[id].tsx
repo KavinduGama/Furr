@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -8,27 +8,75 @@ import {
   Pressable,
   KeyboardAvoidingView,
   Platform,
-  Image,
 } from 'react-native';
 import { useLocalSearchParams, router, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { colors, radius, space, Button } from '@furr/ui';
-import { useTelemedicine } from '@/src/context/telemedicine';
+import type { Consultation, ConsultationMessage } from '@furr/core';
+import {
+  subscribeToConsultation,
+  subscribeToConsultationMessages,
+  sendConsultationMessage,
+  INITIAL_CONSULTATIONS,
+  INITIAL_MESSAGES,
+} from '@furr/firebase';
+import { useAuth } from '@/src/context/auth';
 
 export default function TelemedicineRoomScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { consultations, messages, sendMessage } = useTelemedicine();
+  const { firebaseUser, profile } = useAuth();
+  const [consult, setConsult] = useState<Consultation | null>(
+    INITIAL_CONSULTATIONS.find((c) => c.id === id) || INITIAL_CONSULTATIONS[0]
+  );
+  const [messages, setMessages] = useState<ConsultationMessage[]>(
+    id ? (INITIAL_MESSAGES[id] || []) : []
+  );
   const [inputText, setInputText] = useState('');
+  const [isSending, setIsSending] = useState(false);
+  const scrollViewRef = useRef<ScrollView>(null);
 
-  const consult = consultations.find((c) => c.id === id) || consultations[0];
+  // Subscribe to live consultation details
+  useEffect(() => {
+    if (!id) return;
+    const unsubConsult = subscribeToConsultation(id, (updated) => {
+      if (updated) setConsult(updated);
+    });
+    const unsubMsgs = subscribeToConsultationMessages(id, (msgs) => {
+      setMessages(msgs);
+      setTimeout(() => scrollViewRef.current?.scrollToEnd({ animated: true }), 100);
+    });
+
+    return () => {
+      unsubConsult();
+      unsubMsgs();
+    };
+  }, [id]);
 
   const handleSend = async () => {
-    if (!inputText.trim()) return;
-    const text = inputText;
+    if (!inputText.trim() || !id || isSending) return;
+    const text = inputText.trim();
     setInputText('');
+    setIsSending(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    await sendMessage(id, text);
+
+    try {
+      const senderUid = firebaseUser?.uid || profile?.uid || 'demo-uid';
+      const senderName = profile?.displayName || 'Pet Owner';
+
+      await sendConsultationMessage({
+        consultationId: id,
+        senderUid,
+        senderRole: 'owner',
+        senderName,
+        text,
+      });
+      setTimeout(() => scrollViewRef.current?.scrollToEnd({ animated: true }), 50);
+    } catch (error) {
+      console.warn('Failed to send message:', error);
+    } finally {
+      setIsSending(false);
+    }
   };
 
   if (!consult) {
@@ -75,7 +123,11 @@ export default function TelemedicineRoomScreen() {
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={styles.chatScroll} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        ref={scrollViewRef}
+        contentContainerStyle={styles.chatScroll}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Case Intake Summary Card */}
         <View style={styles.caseCard}>
           <View style={styles.caseHeader}>
@@ -158,8 +210,8 @@ export default function TelemedicineRoomScreen() {
         />
         <Pressable
           onPress={handleSend}
-          style={[styles.sendBtn, !inputText.trim() && styles.sendBtnDisabled]}
-          disabled={!inputText.trim()}
+          style={[styles.sendBtn, (!inputText.trim() || isSending) && styles.sendBtnDisabled]}
+          disabled={!inputText.trim() || isSending}
         >
           <Ionicons name="send" size={18} color="#FFF" />
         </Pressable>

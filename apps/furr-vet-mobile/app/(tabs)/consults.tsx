@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   FlatList,
   KeyboardAvoidingView,
@@ -16,9 +16,23 @@ import { useVetConsults } from '@/src/context/consults';
 import type { Consultation } from '@furr/core';
 
 export default function VetConsultsScreen() {
-  const { consultations, messages, sendMessage } = useVetConsults();
+  const { consultations, messages, sendMessage, subscribeToRoomMessages } = useVetConsults();
   const [selectedConsult, setSelectedConsult] = useState<Consultation | null>(consultations[0] || null);
   const [replyText, setReplyText] = useState('');
+
+  // Keep selected consult in sync when consultations list updates
+  useEffect(() => {
+    if (consultations.length > 0 && !selectedConsult) {
+      setSelectedConsult(consultations[0]);
+    }
+  }, [consultations, selectedConsult]);
+
+  // Subscribe to live room messages when consultation is selected
+  useEffect(() => {
+    if (!selectedConsult?.id) return;
+    const unsub = subscribeToRoomMessages(selectedConsult.id);
+    return () => unsub();
+  }, [selectedConsult?.id, subscribeToRoomMessages]);
 
   const currentMessages = selectedConsult ? (messages[selectedConsult.id] || []) : [];
 

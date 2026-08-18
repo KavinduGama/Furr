@@ -129,6 +129,99 @@ export function subscribeToOwnerConsultations(
   };
 }
 
+export function subscribeToAllActiveConsultations(
+  onUpdate: (consults: Consultation[]) => void
+) {
+  let unsubscribe: (() => void) | undefined;
+  let active = true;
+
+  void (async () => {
+    try {
+      const { getFirestore, collection, onSnapshot } = await import('firebase/firestore');
+      const db = getFirestore();
+      const ref = collection(db, 'telemedicine_consultations');
+
+      unsubscribe = onSnapshot(
+        ref,
+        (snapshot) => {
+          if (snapshot.empty) {
+            onUpdate(INITIAL_CONSULTATIONS);
+            return;
+          }
+          const list: Consultation[] = [];
+          snapshot.forEach((docSnap) => {
+            list.push(docSnap.data() as Consultation);
+          });
+          list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+          onUpdate(list);
+        },
+        (error) => {
+          console.warn('All consultations subscription fallback:', error);
+          onUpdate(INITIAL_CONSULTATIONS);
+        }
+      );
+
+      if (!active && unsubscribe) {
+        unsubscribe();
+      }
+    } catch (e) {
+      console.warn('Failed to subscribe to all consultations:', e);
+      onUpdate(INITIAL_CONSULTATIONS);
+    }
+  })();
+
+  return () => {
+    active = false;
+    if (unsubscribe) unsubscribe();
+  };
+}
+
+export function subscribeToConsultation(
+  consultationId: string,
+  onUpdate: (consult: Consultation | null) => void
+) {
+  let unsubscribe: (() => void) | undefined;
+  let active = true;
+
+  void (async () => {
+    try {
+      const { getFirestore, doc, onSnapshot } = await import('firebase/firestore');
+      const db = getFirestore();
+      const ref = doc(db, 'telemedicine_consultations', consultationId);
+
+      unsubscribe = onSnapshot(
+        ref,
+        (snapshot) => {
+          if (snapshot.exists()) {
+            onUpdate(snapshot.data() as Consultation);
+          } else {
+            const fallback = INITIAL_CONSULTATIONS.find((c) => c.id === consultationId) || null;
+            onUpdate(fallback);
+          }
+        },
+        (error) => {
+          console.warn('Single consultation subscription fallback:', error);
+          const fallback = INITIAL_CONSULTATIONS.find((c) => c.id === consultationId) || null;
+          onUpdate(fallback);
+        }
+      );
+
+      if (!active && unsubscribe) {
+        unsubscribe();
+      }
+    } catch (e) {
+      console.warn('Failed to subscribe to single consultation:', e);
+      const fallback = INITIAL_CONSULTATIONS.find((c) => c.id === consultationId) || null;
+      onUpdate(fallback);
+    }
+  })();
+
+  return () => {
+    active = false;
+    if (unsubscribe) unsubscribe();
+  };
+}
+
 export function subscribeToConsultationMessages(
   consultationId: string,
   onUpdate: (messages: ConsultationMessage[]) => void
@@ -211,6 +304,24 @@ export async function createConsultation(
   }
 }
 
+export async function updateConsultationStatus(
+  consultationId: string,
+  updates: Partial<Pick<Consultation, 'status' | 'vetUid' | 'vetName' | 'vetClinicName' | 'summary' | 'prescriptions'>>
+): Promise<void> {
+  try {
+    const { getFirestore, doc, updateDoc } = await import('firebase/firestore');
+    const db = getFirestore();
+    const ref = doc(db, 'telemedicine_consultations', consultationId);
+    await updateDoc(ref, updates);
+  } catch (e) {
+    console.warn('Local fallback for updateConsultationStatus:', e);
+    const item = INITIAL_CONSULTATIONS.find((c) => c.id === consultationId);
+    if (item) {
+      Object.assign(item, updates);
+    }
+  }
+}
+
 export async function sendConsultationMessage(
   data: Omit<ConsultationMessage, 'id' | 'createdAt'>
 ): Promise<ConsultationMessage> {
@@ -232,6 +343,10 @@ export async function sendConsultationMessage(
       id: 'msg-' + Date.now(),
       createdAt: new Date().toISOString(),
     };
+    if (!INITIAL_MESSAGES[data.consultationId]) {
+      INITIAL_MESSAGES[data.consultationId] = [];
+    }
+    INITIAL_MESSAGES[data.consultationId].push(mockMsg);
     return mockMsg;
   }
 }
