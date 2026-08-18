@@ -89,11 +89,27 @@ export async function verifyOtp(
   return result.user;
 }
 
-/** Sign in a professional or administrator using Firebase email/password auth. */
+/** Sign in a professional, customer or administrator using Firebase email/password auth. */
 export async function signInWithEmail(email: string, password: string): Promise<User> {
   const result = await signInWithEmailAndPassword(getAuth(getApp()), email, password);
   return result.user;
 }
+
+/** Create a new customer or administrator account using Firebase email/password auth. */
+export async function createUserWithEmail(email: string, password: string, displayName?: string): Promise<User> {
+  const { createUserWithEmailAndPassword, updateProfile } = await import('firebase/auth');
+  const result = await createUserWithEmailAndPassword(getAuth(getApp()), email, password);
+  if (displayName && result.user) {
+    try {
+      await updateProfile(result.user, { displayName });
+    } catch {
+      // ignore
+    }
+  }
+  return result.user;
+}
+
+export type { User as AuthUser };
 
 // ── Session ──────────────────────────────────────────────────
 
