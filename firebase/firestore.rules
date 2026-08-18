@@ -44,13 +44,20 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/users/$(ownerUid)/grants/$(request.auth.uid + '_' + petId)).data.grantExpiresAt > request.time;
     }
 
-    // ── User Profiles ─────────────────────────────────────────
+    // ── User Profiles & Subcollections ───────────────────────
     match /users/{uid} {
       allow read: if isOwner(uid) || isAdmin();
       allow create: if isOwner(uid);
       allow update: if isOwner(uid);
       allow delete: if false; // Deletions handled by admin process
+
+      match /billing_history/{docId} {
+        allow read: if isOwner(uid) || isAdmin();
+        allow create, update: if isOwner(uid) || isAdmin();
+        allow delete: if false;
+      }
     }
+
 
     // ── Pets & Subcollections ─────────────────────────────────
     match /users/{ownerUid}/pets/{petId} {
@@ -235,10 +242,19 @@ service cloud.firestore {
 
     // Telemedicine Messages
     match /telemedicine_messages/{docId} {
-      allow read: if isSignedIn() && (resource.data.senderUid == request.auth.uid || resource.data.receiverUid == request.auth.uid || isAdmin());
+      allow read: if isSignedIn();
       allow create: if isSignedIn() && request.resource.data.senderUid == request.auth.uid;
       allow update, delete: if isAdmin();
     }
+
+    // Payment Intents & Checkout Sessions
+    match /payment_intents/{docId} {
+      allow read: if isSignedIn() && (resource.data.customerUid == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && request.resource.data.customerUid == request.auth.uid;
+      allow update: if isSignedIn() && (resource.data.customerUid == request.auth.uid || isAdmin());
+      allow delete: if isAdmin();
+    }
+
 
     // ── Clinics & Hospital Registry ──────────────────────────
     match /clinics/{docId} {
