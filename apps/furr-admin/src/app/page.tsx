@@ -46,6 +46,18 @@ export default function AdminOverview() {
               </span>
             )}
           </Link>
+          <button
+            onClick={async () => {
+              if (confirm('Seed clean initial demo data (products, providers, adoptions, reviews) into Firestore?')) {
+                const { seedFirestoreDatabase } = await import('@furr/firebase');
+                const res = await seedFirestoreDatabase();
+                alert(`Database Seeded Successfully! Populated: ${res.productsCount} products, ${res.providersCount} providers, ${res.adoptionsCount} adoptions, ${res.reviewsCount} reviews.`);
+              }
+            }}
+            className="px-4 py-2.5 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white transition shadow-sm flex items-center gap-1.5"
+          >
+            <span>🌱 Seed Firestore</span>
+          </button>
           <Link
             href="/marketplace"
             className="px-4 py-2.5 rounded-xl text-xs font-bold bg-stone-100 hover:bg-stone-200 text-stone-800 transition"
@@ -54,6 +66,7 @@ export default function AdminOverview() {
           </Link>
         </div>
       </div>
+
 
       {/* Critical Priority Action Banners */}
       {(pendingVets.length > 0 || activeAlerts.length > 0 || openDisputes.length > 0) && (

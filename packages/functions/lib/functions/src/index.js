@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.cleanupStalePushTokens = exports.sendReminderNotifications = exports.cleanupExpiredGrants = exports.handlePaymentWebhook = exports.generateHealthReport = exports.deleteUserAccount = exports.writeAdminAuditLog = exports.redeemGrantCode = exports.onCommunityQuestionCreated = exports.onFoundPetReportCreated = exports.onVetApplicationStatusChanged = exports.onOrderStatusUpdated = exports.onTelehealthMessageSent = exports.onLostPetAlertCreated = void 0;
+exports.cleanupStalePushTokens = exports.sendReminderNotifications = exports.cleanupExpiredGrants = exports.processMarketplaceOrder = exports.handlePaymentWebhook = exports.generateHealthReport = exports.deleteUserAccount = exports.writeAdminAuditLog = exports.redeemGrantCode = exports.onReviewCreatedOrUpdated = exports.onCommunityQuestionCreated = exports.onFoundPetReportCreated = exports.onVetApplicationStatusChanged = exports.onOrderStatusUpdated = exports.onTelehealthMessageSent = exports.onLostPetAlertCreated = void 0;
 const admin = __importStar(require("firebase-admin"));
 // Initialize Firebase Admin SDK
 if (!admin.apps.length) {
@@ -52,6 +52,8 @@ var matchLostPets_1 = require("./triggers/matchLostPets");
 Object.defineProperty(exports, "onFoundPetReportCreated", { enumerable: true, get: function () { return matchLostPets_1.onFoundPetReportCreated; } });
 var moderateContent_1 = require("./triggers/moderateContent");
 Object.defineProperty(exports, "onCommunityQuestionCreated", { enumerable: true, get: function () { return moderateContent_1.onCommunityQuestionCreated; } });
+var aggregateRatings_1 = require("./triggers/aggregateRatings");
+Object.defineProperty(exports, "onReviewCreatedOrUpdated", { enumerable: true, get: function () { return aggregateRatings_1.onReviewCreatedOrUpdated; } });
 // ── Callables ─────────────────────────────────────────────────
 var redeemGrantCode_1 = require("./callable/redeemGrantCode");
 Object.defineProperty(exports, "redeemGrantCode", { enumerable: true, get: function () { return redeemGrantCode_1.redeemGrantCode; } });
@@ -63,6 +65,8 @@ var generateHealthReport_1 = require("./callable/generateHealthReport");
 Object.defineProperty(exports, "generateHealthReport", { enumerable: true, get: function () { return generateHealthReport_1.generateHealthReport; } });
 var handlePaymentWebhook_1 = require("./callable/handlePaymentWebhook");
 Object.defineProperty(exports, "handlePaymentWebhook", { enumerable: true, get: function () { return handlePaymentWebhook_1.handlePaymentWebhook; } });
+var processMarketplaceOrder_1 = require("./callable/processMarketplaceOrder");
+Object.defineProperty(exports, "processMarketplaceOrder", { enumerable: true, get: function () { return processMarketplaceOrder_1.processMarketplaceOrder; } });
 // ── Maintenance Schedulers ────────────────────────────────────
 var grantExpiryCleaner_1 = require("./maintenance/grantExpiryCleaner");
 Object.defineProperty(exports, "cleanupExpiredGrants", { enumerable: true, get: function () { return grantExpiryCleaner_1.cleanupExpiredGrants; } });

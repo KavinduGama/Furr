@@ -30,10 +30,15 @@ export default function TodayScreen() {
             <Text style={styles.greeting}>Hi, {firstName} 👋</Text>
             <Text style={styles.subhead}>Give your pets the best care</Text>
           </View>
-          <Pressable accessibilityRole="button" style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => router.push('/notifications' as never)}
+            style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}
+          >
             <Ionicons name="notifications-outline" color={colors.ink} size={22} />
           </Pressable>
         </View>
+
 
         {/* Pet Avatars (Horizontal List style) */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.petsScroll} contentContainerStyle={styles.petsContent}>
@@ -153,12 +158,30 @@ export default function TodayScreen() {
           </View>
         )}
 
+        {/* Adoption Hub Banner */}
+        <Pressable
+          onPress={() => router.push('/adoption' as never)}
+          style={({ pressed }) => [styles.adoptionBanner, pressed && styles.pressed]}
+        >
+          <View style={styles.adoptionIconCircle}>
+            <Text style={{ fontSize: 24 }}>🐾</Text>
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.adoptionBannerTitle}>Adopt a Rescue Pet ❤️</Text>
+            <Text style={styles.adoptionBannerSubtitle}>
+              Give a loving forever home to dogs & cats from certified shelters.
+            </Text>
+          </View>
+          <Ionicons name="arrow-forward" size={18} color={colors.brand} />
+        </Pressable>
+
         {/* Recent Activity */}
         {hasPets && (
           <View style={styles.section}>
              <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Recent Activity</Text>
             </View>
+
             
             <View style={styles.timeline}>
               <View style={styles.timelineItem}>
@@ -277,4 +300,37 @@ const styles = StyleSheet.create({
   timelineText: { color: colors.ink, fontSize: 15, fontWeight: '700' },
   timelineDate: { color: colors.muted, fontSize: 13, marginTop: 2 },
   timelineLine: { position: 'absolute', left: 23, top: 32, bottom: 0, width: 2, backgroundColor: colors.line, zIndex: 1, height: 40 },
+
+  adoptionBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F3E8FF',
+    marginHorizontal: space.lg,
+    marginTop: space.lg,
+    padding: space.md,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: '#E9D5FF',
+    gap: space.md,
+  },
+  adoptionIconCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: radius.md,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  adoptionBannerTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#6B21A8',
+  },
+  adoptionBannerSubtitle: {
+    fontSize: 12,
+    color: '#7E22CE',
+    lineHeight: 16,
+    marginTop: 2,
+  },
 });
+

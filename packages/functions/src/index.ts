@@ -12,6 +12,7 @@ export { onOrderStatusUpdated } from './triggers/orderDispatchedNotification';
 export { onVetApplicationStatusChanged } from './triggers/verifyVetProfessional';
 export { onFoundPetReportCreated } from './triggers/matchLostPets';
 export { onCommunityQuestionCreated } from './triggers/moderateContent';
+export { onReviewCreatedOrUpdated } from './triggers/aggregateRatings';
 
 // ── Callables ─────────────────────────────────────────────────
 export { redeemGrantCode } from './callable/redeemGrantCode';
@@ -19,6 +20,8 @@ export { writeAdminAuditLog } from './callable/auditLogWriter';
 export { deleteUserAccount } from './callable/userDeletion';
 export { generateHealthReport } from './callable/generateHealthReport';
 export { handlePaymentWebhook } from './callable/handlePaymentWebhook';
+export { processMarketplaceOrder } from './callable/processMarketplaceOrder';
+
 
 // ── Maintenance Schedulers ────────────────────────────────────
 export { cleanupExpiredGrants } from './maintenance/grantExpiryCleaner';

@@ -284,4 +284,6 @@ export * from './family';
 export * from './routines';
 export * from './expenses';
 export * from './payments';
+export * from './adoption';
+export * from './reviews';
 

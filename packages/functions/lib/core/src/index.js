@@ -165,4 +165,6 @@ __exportStar(require("./family"), exports);
 __exportStar(require("./routines"), exports);
 __exportStar(require("./expenses"), exports);
 __exportStar(require("./payments"), exports);
+__exportStar(require("./adoption"), exports);
+__exportStar(require("./reviews"), exports);
 //# sourceMappingURL=index.js.map
