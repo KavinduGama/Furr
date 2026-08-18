@@ -43,6 +43,42 @@ export interface BillingHistoryItem {
   createdAt: string;
 }
 
+export type PayoutStatus = 'pending' | 'processing' | 'completed' | 'rejected';
+export type PayoutMethod = 'bank_transfer' | 'dialog_genie' | 'frimi' | 'ez_cash';
+
+export interface ProviderPayout {
+  id: string;
+  providerId: string;
+  providerName: string;
+  amount: number;
+  currency: 'LKR' | 'USD';
+  method: PayoutMethod;
+  status: PayoutStatus;
+  destinationDetails: string; // e.g. "Commercial Bank - ****4812" or "Genie - 0771234567"
+  referenceNumber?: string;
+  requestedAt: string;
+  processedAt?: string;
+}
+
+export interface ProviderEarningsSummary {
+  todayRevenue: number;
+  weekRevenue: number;
+  monthRevenue: number;
+  lifetimeRevenue: number;
+  pendingPayout: number;
+  availableBalance: number;
+  completedBookingsCount: number;
+  completedOrdersCount: number;
+}
+
+export interface EarningsBreakdown {
+  serviceRevenue: number;
+  productRevenue: number;
+  tipsReceived: number;
+  platformFees: number;
+  netPayout: number;
+}
+
 export function formatCurrency(amount: number, currency: 'LKR' | 'USD' = 'LKR'): string {
   if (currency === 'USD') {
     return `$${amount.toFixed(2)}`;
@@ -58,3 +94,25 @@ export function calculatePlatformCommission(amount: number, takeRatePercent = 10
   const providerPayout = amount - platformFee;
   return { platformFee, providerPayout };
 }
+
+export function calculateProviderEarnings(
+  servicesGross: number,
+  productsGross: number,
+  tipsGross: number = 0,
+  serviceCommissionRate = 10,
+  productCommissionRate = 8
+): EarningsBreakdown {
+  const serviceFee = Math.round((servicesGross * serviceCommissionRate) / 100);
+  const productFee = Math.round((productsGross * productCommissionRate) / 100);
+  const totalFees = serviceFee + productFee;
+  const netPayout = (servicesGross - serviceFee) + (productsGross - productFee) + tipsGross;
+
+  return {
+    serviceRevenue: servicesGross,
+    productRevenue: productsGross,
+    tipsReceived: tipsGross,
+    platformFees: totalFees,
+    netPayout,
+  };
+}
+

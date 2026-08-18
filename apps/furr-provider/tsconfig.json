@@ -1,0 +1,26 @@
+{
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "strict": true,
+    "paths": {
+      "@/*": [
+        "./*"
+      ],
+      "@furr/core": [
+        "../../packages/core/src"
+      ],
+      "@furr/firebase": [
+        "../../packages/firebase/src"
+      ],
+      "@furr/ui": [
+        "../../packages/ui/src"
+      ]
+    }
+  },
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    ".expo/types/**/*.ts",
+    "expo-env.d.ts"
+  ]
+}

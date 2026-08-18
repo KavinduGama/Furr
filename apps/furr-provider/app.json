@@ -1,0 +1,25 @@
+{
+  "expo": {
+    "name": "Furr Provider",
+    "slug": "furr-provider",
+    "scheme": "furrprovider",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "plugins": [
+      "expo-router"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "ios": {
+      "bundleIdentifier": "com.furr.provider"
+    },
+    "android": {
+      "package": "com.furr.provider"
+    },
+    "web": {
+      "output": "single"
+    }
+  }
+}

@@ -35,6 +35,8 @@ export interface ServiceProvider {
   coverUrl?: string;
   bio: string;
   category: ServiceCategory;
+  providerRoles?: ServiceCategory[];
+  isMarketplaceVendor?: boolean;
   rating: number;
   reviewCount: number;
   distanceKm?: number;
@@ -42,12 +44,39 @@ export interface ServiceProvider {
   longitude: number;
   address: string;
   city: string;
+  district?: string;
   experienceYears: number;
   services: ServiceItem[];
   availableDays: string[]; // e.g. ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
   availableHours: { start: string; end: string }; // e.g. { start: '08:00', end: '18:00' }
   isVerified: boolean;
   phone: string;
+  onlineStatus?: 'online' | 'offline' | 'busy';
+  portfolioUrls?: string[];
+  certificationUrls?: string[];
+  nicNumber?: string;
+  businessRegistration?: string;
+  serviceRadius?: number;
+  bankDetails?: {
+    bankName: string;
+    accountNumber: string;
+    branch: string;
+    holderName?: string;
+  };
+  walletDetails?: {
+    type: 'genie' | 'frimi' | 'ezcash';
+    phoneNumber: string;
+  };
+  metrics?: {
+    totalBookings: number;
+    completionRate: number;
+    acceptanceRate: number;
+    avgResponseMinutes: number;
+    avgRating: number;
+  };
+  vacationMode?: boolean;
+  vacationMessage?: string;
+  blockedDates?: string[];
 }
 
 export type BookingStatus = 'pending' | 'confirmed' | 'in_progress' | 'completed' | 'cancelled';
@@ -58,6 +87,10 @@ export interface ServiceBooking {
   petId: string;
   petName: string;
   petSpecies: string;
+  petBreed?: string;
+  petAgeYears?: number;
+  ownerName?: string;
+  ownerPhone?: string;
   providerId: string;
   providerName: string;
   providerAvatar?: string;
@@ -65,11 +98,22 @@ export interface ServiceBooking {
   serviceName: string;
   serviceCategory: ServiceCategory;
   price: number;
+  platformFee?: number;
+  providerPayout?: number;
   date: string; // YYYY-MM-DD
   timeSlot: string; // e.g. '10:00 AM'
   specialNotes?: string;
   status: BookingStatus;
+  completionNotes?: string;
+  completionPhotoUrls?: string[];
+  walkStats?: {
+    distanceMeters: number;
+    durationSeconds: number;
+  };
+  petBehaviorRating?: 'friendly' | 'anxious' | 'reactive' | 'calm';
+  cancellationReason?: string;
   createdAt: string;
+  updatedAt?: string;
 }
 
 export interface SriLankaLocation {

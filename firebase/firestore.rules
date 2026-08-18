@@ -206,8 +206,10 @@ service cloud.firestore {
     // Marketplace Products
     match /marketplace_products/{docId} {
       allow read: if isSignedIn();
-      allow write: if isAdmin();
+      allow create: if isSignedIn();
+      allow update, delete: if isAdmin() || (isSignedIn() && resource.data.sellerId == request.auth.uid);
     }
+
 
     // Marketplace Orders
     match /marketplace_orders/{docId} {
@@ -309,6 +311,13 @@ service cloud.firestore {
     match /admin_payouts/{docId} {
       allow read, write: if isAdmin();
     }
+
+    match /provider_payouts/{docId} {
+      allow read: if isSignedIn() && (resource.data.providerId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && request.resource.data.providerId == request.auth.uid;
+      allow update, delete: if isAdmin();
+    }
+
 
     // ── Clinic Operations Collections ─────────────────────────
     match /clinic_queue/{docId} {
