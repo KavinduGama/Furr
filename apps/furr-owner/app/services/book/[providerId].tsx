@@ -5,6 +5,7 @@ import {
   StyleSheet,
   ScrollView,
   Pressable,
+  Image,
   TextInput,
   Alert,
 } from 'react-native';
@@ -14,6 +15,7 @@ import * as Haptics from 'expo-haptics';
 import { colors, radius, space, Button } from '@furr/ui';
 import { useServices } from '@/src/context/services';
 import { usePets } from '@/src/context/pets';
+import type { PaymentProvider } from '@furr/core';
 
 const AVAILABLE_TIME_SLOTS = [
   '09:00 AM',
@@ -40,6 +42,7 @@ export default function BookServiceScreen() {
     new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
   );
   const [selectedTime, setSelectedTime] = useState<string>(AVAILABLE_TIME_SLOTS[0]);
+  const [selectedPayment, setSelectedPayment] = useState<PaymentProvider>('cash_on_delivery');
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -65,21 +68,24 @@ export default function BookServiceScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
     try {
-      const booking = await bookService({
-        petId: activePet.id,
-        petName: activePet.name,
-        petSpecies: activePet.species,
-        providerId: provider.id,
-        providerName: provider.name,
-        providerAvatar: provider.avatarUrl,
-        serviceId: activeService.id,
-        serviceName: activeService.name,
-        serviceCategory: provider.category,
-        price: activeService.price,
-        date: selectedDate,
-        timeSlot: selectedTime,
-        specialNotes: notes,
-      });
+      const booking = await bookService(
+        {
+          petId: activePet.id,
+          petName: activePet.name,
+          petSpecies: activePet.species,
+          providerId: provider.id,
+          providerName: provider.name,
+          providerAvatar: provider.avatarUrl,
+          serviceId: activeService.id,
+          serviceName: activeService.name,
+          serviceCategory: provider.category,
+          price: activeService.price,
+          date: selectedDate,
+          timeSlot: selectedTime,
+          specialNotes: notes,
+        },
+        selectedPayment
+      );
 
       if (booking) {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -121,27 +127,25 @@ export default function BookServiceScreen() {
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {/* Provider Brief Banner */}
         <View style={styles.providerBanner}>
-          <Ionicons name="storefront-outline" size={20} color={colors.brand} />
+          <Image source={{ uri: provider.avatarUrl }} style={styles.providerAvatar} />
           <View style={{ flex: 1 }}>
             <Text style={styles.bannerTitle}>{provider.name}</Text>
-            <Text style={styles.bannerSubtitle}>
-              {provider.address}, {provider.city}
-            </Text>
+            <Text style={styles.bannerSubtitle}>{provider.address}</Text>
           </View>
         </View>
 
-        {/* Step 1: Select Service */}
+        {/* Step 1: Select Service Offering */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>1. Select Service</Text>
           <View style={styles.optionsList}>
-            {provider.services.map((srv) => {
-              const isSelected = selectedServiceId === srv.id;
+            {provider.services.map((svc) => {
+              const isSelected = svc.id === selectedServiceId;
               return (
                 <Pressable
-                  key={srv.id}
+                  key={svc.id}
                   onPress={() => {
-                    Haptics.selectionAsync();
-                    setSelectedServiceId(srv.id);
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    setSelectedServiceId(svc.id);
                   }}
                   style={[styles.serviceOption, isSelected && styles.serviceOptionActive]}
                 >
@@ -149,15 +153,12 @@ export default function BookServiceScreen() {
                     {isSelected && <View style={styles.radioInner} />}
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={[styles.optionTitle, isSelected && styles.optionTitleActive]}>
-                      {srv.name}
+                    <Text style={[styles.optionName, isSelected && styles.optionNameActive]}>
+                      {svc.name}
                     </Text>
-                    {srv.description ? (
-                      <Text style={styles.optionDesc}>{srv.description}</Text>
-                    ) : null}
-                    <Text style={styles.optionDuration}>⏱ {srv.durationMinutes} minutes</Text>
+                    <Text style={styles.optionDuration}>{svc.durationMinutes} minutes session</Text>
                   </View>
-                  <Text style={styles.optionPrice}>Rs {srv.price.toLocaleString()}</Text>
+                  <Text style={styles.optionPrice}>Rs {svc.price.toLocaleString()}</Text>
                 </Pressable>
               );
             })}
@@ -166,52 +167,50 @@ export default function BookServiceScreen() {
 
         {/* Step 2: Select Pet */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>2. For Which Companion?</Text>
-          <View style={styles.petsRow}>
+          <Text style={styles.sectionTitle}>2. Which Pet is this for?</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.petsScroll}>
             {pets.map((p) => {
-              const isSelected = selectedPetId === p.id;
+              const isSelected = p.id === selectedPetId;
               return (
                 <Pressable
                   key={p.id}
                   onPress={() => {
-                    Haptics.selectionAsync();
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                     setSelectedPetId(p.id);
                   }}
-                  style={[styles.petPill, isSelected && styles.petPillActive]}
+                  style={[styles.petChip, isSelected && styles.petChipActive]}
                 >
-                  <Text style={styles.petEmoji}>{p.species === 'cat' ? '🐱' : '🐶'}</Text>
-                  <Text style={[styles.petPillName, isSelected && styles.petPillNameActive]}>
-                    {p.name}
-                  </Text>
+                  <View style={styles.petAvatar}>
+                    <Text style={styles.petAvatarText}>{p.avatarLabel || p.name.charAt(0)}</Text>
+                  </View>
+                  <Text style={[styles.petName, isSelected && styles.petNameActive]}>{p.name}</Text>
                 </Pressable>
               );
             })}
-          </View>
+          </ScrollView>
         </View>
 
-        {/* Step 3: Date & Time */}
+        {/* Step 3: Date & Slot Selection */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>3. Select Time Slot</Text>
-          <View style={styles.timeGrid}>
+          <Text style={styles.sectionTitle}>3. Preferred Time Slot</Text>
+          <View style={styles.slotsGrid}>
             {AVAILABLE_TIME_SLOTS.map((slot) => {
-              const isSelected = selectedTime === slot;
+              const isSelected = slot === selectedTime;
               return (
                 <Pressable
                   key={slot}
                   onPress={() => {
-                    Haptics.selectionAsync();
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                     setSelectedTime(slot);
                   }}
-                  style={[styles.timeSlot, isSelected && styles.timeSlotActive]}
+                  style={[styles.slotCard, isSelected && styles.slotCardActive]}
                 >
                   <Ionicons
                     name="time-outline"
-                    size={14}
-                    color={isSelected ? '#FFF' : colors.muted}
+                    size={16}
+                    color={isSelected ? colors.brand : colors.muted}
                   />
-                  <Text style={[styles.timeSlotText, isSelected && styles.timeSlotTextActive]}>
-                    {slot}
-                  </Text>
+                  <Text style={[styles.slotText, isSelected && styles.slotTextActive]}>{slot}</Text>
                 </Pressable>
               );
             })}
@@ -232,6 +231,33 @@ export default function BookServiceScreen() {
           />
         </View>
 
+        {/* Step 5: Payment Method */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>5. Payment Method</Text>
+          <View style={styles.paymentMethods}>
+            {[
+              { id: 'card', label: 'Credit / Debit Card (Stripe)', icon: 'card-outline' },
+              { id: 'payhere', label: 'PayHere / Mobile Wallets', icon: 'qr-code-outline' },
+              { id: 'cash_on_delivery', label: 'Pay at Clinic / In Person', icon: 'cash-outline' },
+            ].map((m) => (
+              <Pressable
+                key={m.id}
+                onPress={() => setSelectedPayment(m.id as PaymentProvider)}
+                style={[styles.paymentOption, selectedPayment === m.id && styles.paymentOptionActive]}
+              >
+                <Ionicons
+                  name={m.icon as any}
+                  size={18}
+                  color={selectedPayment === m.id ? colors.brand : colors.muted}
+                />
+                <Text style={[styles.paymentText, selectedPayment === m.id && styles.paymentTextActive]}>
+                  {m.label}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        </View>
+
         {/* Booking Summary */}
         <View style={styles.summaryCard}>
           <Text style={styles.summaryTitle}>Appointment Summary</Text>
@@ -250,7 +276,9 @@ export default function BookServiceScreen() {
             </Text>
           </View>
           <View style={[styles.summaryRow, styles.totalRow]}>
-            <Text style={styles.totalLabel}>Pay at Clinic/Service</Text>
+            <Text style={styles.totalLabel}>
+              {selectedPayment === 'cash_on_delivery' ? 'Pay In Person' : 'Amount to Pay'}
+            </Text>
             <Text style={styles.totalValue}>Rs {activeService?.price.toLocaleString()}</Text>
           </View>
         </View>
@@ -285,6 +313,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.line,
   },
+  providerAvatar: { width: 50, height: 50, borderRadius: 25, backgroundColor: colors.softBrand },
   bannerTitle: { fontSize: 15, fontWeight: '800', color: colors.ink },
   bannerSubtitle: { fontSize: 12, color: colors.muted, marginTop: 1 },
 
@@ -315,78 +344,99 @@ const styles = StyleSheet.create({
   },
   radioActive: { borderColor: colors.brand },
   radioInner: { width: 10, height: 10, borderRadius: 5, backgroundColor: colors.brand },
-  optionTitle: { fontSize: 15, fontWeight: '800', color: colors.muted },
-  optionTitleActive: { color: colors.ink },
-  optionDesc: { fontSize: 12, color: colors.muted, marginTop: 2, lineHeight: 16 },
-  optionDuration: { fontSize: 11, fontWeight: '700', color: colors.brand, marginTop: 4 },
-  optionPrice: { fontSize: 15, fontWeight: '900', color: colors.ink },
+  optionName: { fontSize: 14, fontWeight: '800', color: colors.ink },
+  optionNameActive: { color: colors.brand },
+  optionDuration: { fontSize: 12, color: colors.muted, marginTop: 2 },
+  optionPrice: { fontSize: 14, fontWeight: '900', color: colors.ink },
 
-  petsRow: { flexDirection: 'row', gap: space.sm },
-  petPill: {
+  petsScroll: { gap: space.sm },
+  petChip: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
     backgroundColor: colors.surface,
     paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingVertical: 8,
     borderRadius: radius.pill,
-    borderWidth: 2,
+    borderWidth: 1.5,
     borderColor: colors.line,
   },
-  petPillActive: { borderColor: colors.brand, backgroundColor: colors.softBrand },
-  petEmoji: { fontSize: 16 },
-  petPillName: { fontSize: 14, fontWeight: '800', color: colors.muted },
-  petPillNameActive: { color: colors.ink },
-
-  timeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  timeSlot: {
-    flexDirection: 'row',
+  petChipActive: { borderColor: colors.brand, backgroundColor: '#FFFDF5' },
+  petAvatar: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: colors.softBrand,
     alignItems: 'center',
-    gap: 6,
-    backgroundColor: colors.surface,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.line,
-    width: '31%',
     justifyContent: 'center',
   },
-  timeSlotActive: { backgroundColor: colors.brand, borderColor: colors.brand },
-  timeSlotText: { fontSize: 12, fontWeight: '700', color: colors.ink },
-  timeSlotTextActive: { color: '#FFF' },
+  petAvatarText: { fontSize: 13, fontWeight: '900', color: colors.brand },
+  petName: { fontSize: 13, fontWeight: '700', color: colors.ink },
+  petNameActive: { color: colors.brand },
+
+  slotsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
+  slotCard: {
+    width: '48%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 12,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    borderWidth: 1.5,
+    borderColor: colors.line,
+  },
+  slotCardActive: { borderColor: colors.brand, backgroundColor: '#FFFDF5' },
+  slotText: { fontSize: 13, fontWeight: '700', color: colors.muted },
+  slotTextActive: { color: colors.brand },
 
   notesInput: {
     backgroundColor: colors.surface,
     borderRadius: radius.xl,
-    padding: space.md,
     borderWidth: 1,
     borderColor: colors.line,
+    padding: space.md,
     fontSize: 14,
     color: colors.ink,
-    minHeight: 70,
     textAlignVertical: 'top',
+    minHeight: 80,
   },
 
+  paymentMethods: { gap: space.xs },
+  paymentOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.md,
+    backgroundColor: colors.surface,
+    padding: space.md,
+    borderRadius: radius.xl,
+    borderWidth: 1.5,
+    borderColor: colors.line,
+  },
+  paymentOptionActive: { borderColor: colors.brand, backgroundColor: '#FFFDF5' },
+  paymentText: { fontSize: 13, fontWeight: '700', color: colors.ink },
+  paymentTextActive: { color: colors.brand },
+
   summaryCard: {
+    marginTop: space.xl,
     backgroundColor: colors.surface,
     borderRadius: radius.xl,
     padding: space.md,
-    marginTop: space.xl,
     borderWidth: 1,
     borderColor: colors.line,
-    gap: space.xs,
+    gap: space.sm,
   },
-  summaryTitle: { fontSize: 15, fontWeight: '800', color: colors.ink, marginBottom: 4 },
-  summaryRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 2 },
+  summaryTitle: { fontSize: 14, fontWeight: '800', color: colors.ink, marginBottom: 2 },
+  summaryRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   summaryLabel: { fontSize: 13, color: colors.muted },
   summaryValue: { fontSize: 13, fontWeight: '700', color: colors.ink },
   totalRow: {
-    marginTop: space.sm,
-    paddingTop: space.sm,
     borderTopWidth: 1,
     borderTopColor: colors.line,
+    paddingTop: space.sm,
+    marginTop: space.xs,
   },
-  totalLabel: { fontSize: 15, fontWeight: '900', color: colors.ink },
-  totalValue: { fontSize: 18, fontWeight: '900', color: colors.brand },
+  totalLabel: { fontSize: 14, fontWeight: '900', color: colors.ink },
+  totalValue: { fontSize: 16, fontWeight: '900', color: colors.brand },
 });

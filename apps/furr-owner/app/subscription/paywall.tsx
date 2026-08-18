@@ -1,9 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View, ActivityIndicator } from 'react-native';
 import { Button, colors, radius, space } from '@furr/ui';
 import { useSubscription, SubscriptionTier } from '@/src/context/subscription';
+import type { PaymentProvider } from '@furr/core';
+import * as Haptics from 'expo-haptics';
 
 const PLUS_FEATURES = [
   { icon: 'paw', text: 'Unlimited pet profiles & care timelines' },
@@ -20,15 +22,20 @@ const FAMILY_FEATURES = [
 ];
 
 export default function PaywallScreen() {
-  const { isPremium, tier, upgradeTier, restorePurchases } = useSubscription();
+  const { isPremium, tier, billingHistory, upgradeTier, restorePurchases } = useSubscription();
   const [selectedTier, setSelectedTier] = useState<SubscriptionTier>('plus');
+  const [selectedProvider, setSelectedProvider] = useState<PaymentProvider>('stripe');
+  const [period, setPeriod] = useState<'monthly' | 'annual'>('monthly');
   const [loading, setLoading] = useState(false);
 
   const handlePurchase = async () => {
     setLoading(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     try {
-      await upgradeTier(selectedTier);
-      router.back();
+      const success = await upgradeTier(selectedTier, selectedProvider, period);
+      if (success) {
+        router.back();
+      }
     } catch (e) {
       console.error(e);
     } finally {
@@ -38,6 +45,7 @@ export default function PaywallScreen() {
 
   const handleRestore = async () => {
     setLoading(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     try {
       await restorePurchases();
     } finally {
@@ -48,14 +56,47 @@ export default function PaywallScreen() {
   if (isPremium) {
     return (
       <View style={styles.screen}>
-        <View style={styles.successBox}>
-          <Ionicons name="checkmark-circle" size={80} color={colors.success} />
-          <Text style={styles.successTitle}>Active Subscription: Furr {tier.toUpperCase()}</Text>
-          <Text style={styles.successCopy}>
-            Thank you for supporting Furr! You have full access to all premium features.
-          </Text>
-          <Button label="Go back" onPress={() => router.back()} />
-        </View>
+        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+          <View style={styles.topBar}>
+            <Pressable accessibilityRole="button" onPress={() => router.back()} style={styles.closeBtn}>
+              <Ionicons name="close" size={26} color={colors.ink} />
+            </Pressable>
+          </View>
+
+          <View style={styles.successBox}>
+            <Ionicons name="checkmark-circle" size={80} color={colors.success} />
+            <Text style={styles.successTitle}>Active Subscription: Furr {tier.toUpperCase()}</Text>
+            <Text style={styles.successCopy}>
+              Thank you for supporting Furr! You have full access to all premium features and priority support.
+            </Text>
+          </View>
+
+          {/* Billing History Section */}
+          {billingHistory && billingHistory.length > 0 && (
+            <View style={styles.historyContainer}>
+              <Text style={styles.historyTitle}>Billing & Invoices</Text>
+              <View style={styles.historyList}>
+                {billingHistory.map((inv) => (
+                  <View key={inv.id} style={styles.invoiceItem}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.invTier}>Furr {inv.tier.toUpperCase()} ({inv.period})</Text>
+                      <Text style={styles.invDate}>
+                        {new Date(inv.createdAt).toLocaleDateString()} · {inv.paymentMethod}
+                      </Text>
+                    </View>
+                    <View style={{ alignItems: 'flex-end' }}>
+                      <Text style={{ fontSize: 11, color: colors.success, fontWeight: '700' }}>PAID ✓</Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            </View>
+          )}
+
+          <View style={{ paddingHorizontal: space.lg, marginTop: space.xl }}>
+            <Button label="Back to App" onPress={() => router.back()} />
+          </View>
+        </ScrollView>
       </View>
     );
   }
@@ -96,60 +137,94 @@ export default function PaywallScreen() {
         <View style={styles.pricingContainer}>
           <Pressable
             accessibilityRole="button"
-            onPress={() => setSelectedTier('plus')}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              setSelectedTier('plus');
+            }}
             style={[styles.planCard, selectedTier === 'plus' && styles.planCardActive]}
           >
             <View style={styles.planHeader}>
               <View style={[styles.radio, selectedTier === 'plus' && styles.radioActive]}>
                 {selectedTier === 'plus' && <View style={styles.radioInner} />}
               </View>
-              <Text style={[styles.planTitle, selectedTier === 'plus' && styles.planTitleActive]}>Furr+</Text>
+              <Text style={[styles.planTitle, selectedTier === 'plus' && styles.planTitleActive]}>
+                Furr+ Individual
+              </Text>
             </View>
             <Text style={styles.planPrice}>
               LKR 499 <Text style={styles.planPeriod}>/ month</Text>
             </Text>
-            <Text style={styles.planDesc}>Unlimited pets, PDF exports & smart care</Text>
+            <Text style={styles.planDesc}>Unlimited pets, PDF export, medical drive</Text>
           </Pressable>
 
           <Pressable
             accessibilityRole="button"
-            onPress={() => setSelectedTier('family')}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              setSelectedTier('family');
+            }}
             style={[styles.planCard, selectedTier === 'family' && styles.planCardActive]}
           >
             <View style={styles.popularBadge}>
-              <Text style={styles.popularText}>FAMILY & VET</Text>
+              <Text style={styles.popularText}>BEST VALUE</Text>
             </View>
             <View style={styles.planHeader}>
               <View style={[styles.radio, selectedTier === 'family' && styles.radioActive]}>
                 {selectedTier === 'family' && <View style={styles.radioInner} />}
               </View>
               <Text style={[styles.planTitle, selectedTier === 'family' && styles.planTitleActive]}>
-                Furr Family
+                Furr Family Pack
               </Text>
             </View>
             <Text style={styles.planPrice}>
               LKR 799 <Text style={styles.planPeriod}>/ month</Text>
             </Text>
-            <Text style={styles.planDesc}>Up to 5 family members + priority vet queue</Text>
+            <Text style={styles.planDesc}>Up to 5 family members, shared care, priority vet queue</Text>
           </Pressable>
+        </View>
+
+        {/* Payment Provider Selection */}
+        <View style={styles.paymentSection}>
+          <Text style={styles.paymentSectionTitle}>Payment Gateway</Text>
+          <View style={styles.providerRow}>
+            <Pressable
+              onPress={() => setSelectedProvider('stripe')}
+              style={[styles.providerBtn, selectedProvider === 'stripe' && styles.providerBtnActive]}
+            >
+              <Ionicons name="card" size={18} color={selectedProvider === 'stripe' ? colors.brand : colors.muted} />
+              <Text style={[styles.providerText, selectedProvider === 'stripe' && styles.providerTextActive]}>
+                Credit / Debit Card
+              </Text>
+            </Pressable>
+
+            <Pressable
+              onPress={() => setSelectedProvider('payhere')}
+              style={[styles.providerBtn, selectedProvider === 'payhere' && styles.providerBtnActive]}
+            >
+              <Ionicons name="qr-code" size={18} color={selectedProvider === 'payhere' ? colors.brand : colors.muted} />
+              <Text style={[styles.providerText, selectedProvider === 'payhere' && styles.providerTextActive]}>
+                PayHere / Genie
+              </Text>
+            </Pressable>
+          </View>
         </View>
 
         {/* Action Button */}
         <View style={styles.actionContainer}>
           <Button
-            label={loading ? 'Processing...' : `Subscribe to Furr ${selectedTier === 'family' ? 'Family' : '+'}`}
-            loading={loading}
+            label={loading ? 'Processing Payment…' : `Subscribe Now · LKR ${selectedTier === 'family' ? '799' : '499'}/mo`}
             onPress={handlePurchase}
+            disabled={loading}
           />
-          <Pressable onPress={handleRestore} style={styles.restoreBtn} disabled={loading}>
-            <Text style={styles.restoreText}>Restore Purchases</Text>
+          <Pressable accessibilityRole="button" onPress={handleRestore} style={styles.restoreBtn}>
+            <Text style={styles.restoreText}>Restore Existing Purchases</Text>
           </Pressable>
         </View>
 
-        {/* Legal */}
+        {/* Legal Disclaimer */}
         <View style={styles.legal}>
           <Text style={styles.legalText}>
-            7-day free trial. Cancel anytime. By subscribing, you agree to our{' '}
+            7-day free trial. Cancel anytime in profile. By subscribing, you agree to our{' '}
             <Text style={styles.legalLink}>Terms</Text> and <Text style={styles.legalLink}>Privacy Policy</Text>.
           </Text>
         </View>
@@ -162,9 +237,9 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.canvas },
   content: { paddingBottom: space.xxl },
 
-  successBox: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: space.xl, gap: space.md },
+  successBox: { justifyContent: 'center', alignItems: 'center', padding: space.xl, gap: space.md },
   successTitle: { fontSize: 22, fontWeight: '900', color: colors.ink, textAlign: 'center' },
-  successCopy: { fontSize: 15, color: colors.muted, textAlign: 'center', marginBottom: space.lg },
+  successCopy: { fontSize: 15, color: colors.muted, textAlign: 'center', marginBottom: space.sm },
 
   topBar: { paddingHorizontal: space.lg, paddingTop: space.md, paddingBottom: space.sm, alignItems: 'flex-start' },
   closeBtn: {
@@ -245,6 +320,34 @@ const styles = StyleSheet.create({
   planPrice: { fontSize: 22, fontWeight: '900', color: colors.ink, marginTop: space.xs, paddingLeft: 30 },
   planPeriod: { fontSize: 14, fontWeight: '600', color: colors.muted },
   planDesc: { fontSize: 12, color: colors.muted, marginTop: 2, paddingLeft: 30 },
+
+  paymentSection: { paddingHorizontal: space.lg, marginTop: space.lg },
+  paymentSectionTitle: { fontSize: 13, fontWeight: '800', color: colors.ink, marginBottom: 8 },
+  providerRow: { flexDirection: 'row', gap: space.sm },
+  providerBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderRadius: radius.lg,
+    backgroundColor: colors.surface,
+    borderWidth: 1.5,
+    borderColor: colors.line,
+  },
+  providerBtnActive: { borderColor: colors.brand, backgroundColor: '#FFFDF5' },
+  providerText: { fontSize: 12, fontWeight: '700', color: colors.muted },
+  providerTextActive: { color: colors.ink },
+
+  historyContainer: { paddingHorizontal: space.lg, marginTop: space.md },
+  historyTitle: { fontSize: 14, fontWeight: '800', color: colors.ink, marginBottom: space.sm },
+  historyList: { backgroundColor: colors.surface, borderRadius: radius.xl, borderWidth: 1, borderColor: colors.line, overflow: 'hidden' },
+  invoiceItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: space.md, borderBottomWidth: 1, borderBottomColor: colors.line },
+  invTier: { fontSize: 13, fontWeight: '800', color: colors.ink },
+  invDate: { fontSize: 11, color: colors.muted, marginTop: 2 },
+  invAmount: { fontSize: 13, fontWeight: '900', color: colors.ink },
 
   actionContainer: { paddingHorizontal: space.lg, marginTop: space.xl },
   restoreBtn: { paddingVertical: 14, alignItems: 'center', marginTop: 2 },

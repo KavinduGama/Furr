@@ -283,4 +283,5 @@ export * from './lostfound';
 export * from './family';
 export * from './routines';
 export * from './expenses';
+export * from './payments';
 

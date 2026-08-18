@@ -71,3 +71,21 @@ export interface ServiceBooking {
   status: BookingStatus;
   createdAt: string;
 }
+
+export function calculateDistanceKm(
+  pointA: { latitude: number; longitude: number },
+  pointB: { latitude: number; longitude: number }
+): number {
+  const R = 6371; // Earth radius in km
+  const dLat = ((pointB.latitude - pointA.latitude) * Math.PI) / 180;
+  const dLon = ((pointB.longitude - pointA.longitude) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((pointA.latitude * Math.PI) / 180) *
+      Math.cos((pointB.latitude * Math.PI) / 180) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return Math.round(R * c * 10) / 10;
+}
+

@@ -18,6 +18,7 @@ export { redeemGrantCode } from './callable/redeemGrantCode';
 export { writeAdminAuditLog } from './callable/auditLogWriter';
 export { deleteUserAccount } from './callable/userDeletion';
 export { generateHealthReport } from './callable/generateHealthReport';
+export { handlePaymentWebhook } from './callable/handlePaymentWebhook';
 
 // ── Maintenance Schedulers ────────────────────────────────────
 export { cleanupExpiredGrants } from './maintenance/grantExpiryCleaner';

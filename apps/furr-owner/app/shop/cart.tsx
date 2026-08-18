@@ -260,9 +260,9 @@ export default function CartScreen() {
           <Text style={styles.sectionTitle}>Payment Method</Text>
           <View style={styles.paymentMethods}>
             {[
+              { id: 'card', label: 'Credit / Debit Card (Stripe)', icon: 'card-outline' },
+              { id: 'wallet', label: 'PayHere & Mobile Wallets', icon: 'qr-code-outline' },
               { id: 'cod', label: 'Cash on Delivery', icon: 'cash-outline' },
-              { id: 'card', label: 'Credit / Debit Card', icon: 'card-outline' },
-              { id: 'wallet', label: 'Furr Wallet', icon: 'wallet-outline' },
             ].map((method) => (
               <Pressable
                 key={method.id}

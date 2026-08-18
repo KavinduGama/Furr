@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.cleanupStalePushTokens = exports.sendReminderNotifications = exports.cleanupExpiredGrants = exports.generateHealthReport = exports.deleteUserAccount = exports.writeAdminAuditLog = exports.redeemGrantCode = exports.onCommunityQuestionCreated = exports.onFoundPetReportCreated = exports.onVetApplicationStatusChanged = exports.onOrderStatusUpdated = exports.onTelehealthMessageSent = exports.onLostPetAlertCreated = void 0;
+exports.cleanupStalePushTokens = exports.sendReminderNotifications = exports.cleanupExpiredGrants = exports.handlePaymentWebhook = exports.generateHealthReport = exports.deleteUserAccount = exports.writeAdminAuditLog = exports.redeemGrantCode = exports.onCommunityQuestionCreated = exports.onFoundPetReportCreated = exports.onVetApplicationStatusChanged = exports.onOrderStatusUpdated = exports.onTelehealthMessageSent = exports.onLostPetAlertCreated = void 0;
 const admin = __importStar(require("firebase-admin"));
 // Initialize Firebase Admin SDK
 if (!admin.apps.length) {
@@ -61,6 +61,8 @@ var userDeletion_1 = require("./callable/userDeletion");
 Object.defineProperty(exports, "deleteUserAccount", { enumerable: true, get: function () { return userDeletion_1.deleteUserAccount; } });
 var generateHealthReport_1 = require("./callable/generateHealthReport");
 Object.defineProperty(exports, "generateHealthReport", { enumerable: true, get: function () { return generateHealthReport_1.generateHealthReport; } });
+var handlePaymentWebhook_1 = require("./callable/handlePaymentWebhook");
+Object.defineProperty(exports, "handlePaymentWebhook", { enumerable: true, get: function () { return handlePaymentWebhook_1.handlePaymentWebhook; } });
 // ── Maintenance Schedulers ────────────────────────────────────
 var grantExpiryCleaner_1 = require("./maintenance/grantExpiryCleaner");
 Object.defineProperty(exports, "cleanupExpiredGrants", { enumerable: true, get: function () { return grantExpiryCleaner_1.cleanupExpiredGrants; } });

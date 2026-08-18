@@ -1,24 +1,28 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
-import type { ServiceProvider, ServiceCategory, ServiceBooking } from '@furr/core';
+import type { ServiceProvider, ServiceCategory, ServiceBooking, PaymentProvider } from '@furr/core';
 import {
   subscribeToServiceProviders,
   subscribeToUserBookings,
   createServiceBooking as firebaseCreateBooking,
   cancelServiceBooking as firebaseCancelBooking,
+  createPaymentIntent,
+  confirmPayment,
   INITIAL_PROVIDERS,
+  INITIAL_BOOKINGS,
 } from '@furr/firebase';
-import { getCurrentLocation, calculateDistanceKm, type GeoCoordinate } from '../utils/location';
 import { useAuth } from './auth';
+import { calculateDistanceKm } from '@furr/core';
 
 interface ServicesContextType {
   providers: ServiceProvider[];
   selectedCategory: ServiceCategory | 'all';
-  setSelectedCategory: (cat: ServiceCategory | 'all') => void;
+  setSelectedCategory: (category: ServiceCategory | 'all') => void;
   filteredProviders: ServiceProvider[];
-  userLocation: GeoCoordinate | null;
+  userLocation: { latitude: number; longitude: number } | null;
   bookings: ServiceBooking[];
   bookService: (
-    bookingData: Omit<ServiceBooking, 'id' | 'createdAt' | 'status' | 'ownerUid'>
+    bookingData: Omit<ServiceBooking, 'id' | 'createdAt' | 'status' | 'ownerUid'>,
+    paymentProvider?: PaymentProvider
   ) => Promise<ServiceBooking | null>;
   cancelBooking: (bookingId: string) => Promise<void>;
   isLoadingLocation: boolean;
@@ -27,30 +31,14 @@ interface ServicesContextType {
 const ServicesContext = createContext<ServicesContextType | null>(null);
 
 export function ServicesProvider({ children }: { children: React.ReactNode }) {
-  const { firebaseUser } = useAuth();
+  const { firebaseUser, profile } = useAuth();
   const [providers, setProviders] = useState<ServiceProvider[]>(INITIAL_PROVIDERS);
+  const [bookings, setBookings] = useState<ServiceBooking[]>(INITIAL_BOOKINGS);
   const [selectedCategory, setSelectedCategory] = useState<ServiceCategory | 'all'>('all');
-  const [userLocation, setUserLocation] = useState<GeoCoordinate | null>(null);
-  const [isLoadingLocation, setIsLoadingLocation] = useState(false);
-  const [bookings, setBookings] = useState<ServiceBooking[]>([]);
+  const [userLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [isLoadingLocation] = useState(false);
 
-  // Fetch device GPS coordinates
-  useEffect(() => {
-    let mounted = true;
-    (async () => {
-      setIsLoadingLocation(true);
-      const loc = await getCurrentLocation();
-      if (mounted && loc) {
-        setUserLocation(loc);
-      }
-      if (mounted) setIsLoadingLocation(false);
-    })();
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
-  // Subscribe to service providers
+  // Subscribe to live service providers
   useEffect(() => {
     const unsubscribe = subscribeToServiceProviders((list) => {
       setProviders(list);
@@ -61,7 +49,7 @@ export function ServicesProvider({ children }: { children: React.ReactNode }) {
   // Subscribe to user bookings
   useEffect(() => {
     if (!firebaseUser) {
-      setBookings([]);
+      setBookings(INITIAL_BOOKINGS);
       return;
     }
     const unsubscribe = subscribeToUserBookings(firebaseUser.uid, (list) => {
@@ -94,10 +82,35 @@ export function ServicesProvider({ children }: { children: React.ReactNode }) {
 
   const bookService = useCallback(
     async (
-      bookingData: Omit<ServiceBooking, 'id' | 'createdAt' | 'status' | 'ownerUid'>
+      bookingData: Omit<ServiceBooking, 'id' | 'createdAt' | 'status' | 'ownerUid'>,
+      paymentProvider: PaymentProvider = 'cash_on_delivery'
     ): Promise<ServiceBooking | null> => {
       try {
-        const ownerUid = firebaseUser?.uid || 'guest-user';
+        const ownerUid = firebaseUser?.uid || profile?.uid || 'guest-user';
+
+        // 1. Create PaymentIntent for the appointment
+        const intent = await createPaymentIntent({
+          amount: bookingData.price,
+          currency: 'LKR',
+          purpose: 'service_booking',
+          customerUid: ownerUid,
+          customerName: profile?.displayName || undefined,
+          provider: paymentProvider,
+          metadata: {
+            serviceName: bookingData.serviceName,
+            providerName: bookingData.providerName,
+            date: bookingData.date,
+          },
+        });
+
+        // 2. Confirm Payment
+        await confirmPayment(
+          intent.id,
+          `tx_srv_${Date.now()}`,
+          paymentProvider
+        );
+
+        // 3. Create Booking Record
         const booking = await firebaseCreateBooking({
           ...bookingData,
           ownerUid,
@@ -110,7 +123,7 @@ export function ServicesProvider({ children }: { children: React.ReactNode }) {
         return null;
       }
     },
-    [firebaseUser]
+    [firebaseUser?.uid, profile?.uid, profile?.displayName]
   );
 
   const cancelBooking = useCallback(async (bookingId: string) => {

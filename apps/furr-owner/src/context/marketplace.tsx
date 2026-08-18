@@ -1,12 +1,19 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
-import type { Product, ProductCategory, CartItem, Order, OrderAddress } from '@furr/core';
-import { subscribeToProducts, subscribeToOrders, createOrder as firebaseCreateOrder, INITIAL_PRODUCTS } from '@furr/firebase';
+import type { Product, ProductCategory, CartItem, Order, OrderAddress, PaymentProvider } from '@furr/core';
+import {
+  subscribeToProducts,
+  subscribeToOrders,
+  createOrder as firebaseCreateOrder,
+  createPaymentIntent,
+  confirmPayment,
+  INITIAL_PRODUCTS,
+} from '@furr/firebase';
 import { useAuth } from './auth';
 
 interface MarketplaceContextType {
   products: Product[];
   selectedCategory: ProductCategory | 'all';
-  setSelectedCategory: (cat: ProductCategory | 'all') => void;
+  setSelectedCategory: (category: ProductCategory | 'all') => void;
   searchQuery: string;
   setSearchQuery: (query: string) => void;
   filteredProducts: Product[];
@@ -18,10 +25,13 @@ interface MarketplaceContextType {
   cartTotal: number;
   cartItemCount: number;
   orders: Order[];
-  placeOrder: (shippingAddress: OrderAddress, paymentMethod: 'card' | 'cod' | 'wallet') => Promise<Order | null>;
   appliedCoupon: string | null;
   applyCoupon: (code: string) => boolean;
   discountAmount: number;
+  placeOrder: (
+    shippingAddress: OrderAddress,
+    paymentMethod: 'card' | 'cod' | 'wallet'
+  ) => Promise<Order | null>;
 }
 
 const MarketplaceContext = createContext<MarketplaceContextType | null>(null);
@@ -29,55 +39,54 @@ const MarketplaceContext = createContext<MarketplaceContextType | null>(null);
 export function MarketplaceProvider({ children }: { children: React.ReactNode }) {
   const { firebaseUser, profile } = useAuth();
   const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS);
+  const [orders, setOrders] = useState<Order[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<ProductCategory | 'all'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [orders, setOrders] = useState<Order[]>([]);
   const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null);
 
-  // Subscribe to products
+  // Subscribe to live products
   useEffect(() => {
-    const unsubscribe = subscribeToProducts((prods) => {
-      setProducts(prods);
+    const unsubscribe = subscribeToProducts((list) => {
+      setProducts(list);
     });
     return () => unsubscribe();
   }, []);
 
-  // Subscribe to user's orders
+  // Subscribe to user orders
   useEffect(() => {
     if (!firebaseUser) {
       setOrders([]);
       return;
     }
-    const unsubscribe = subscribeToOrders(firebaseUser.uid, (newOrders) => {
-      setOrders(newOrders);
+    const unsubscribe = subscribeToOrders(firebaseUser.uid, (list) => {
+      setOrders(list);
     });
     return () => unsubscribe();
   }, [firebaseUser]);
 
-  // Client-side search and category filtering
   const filteredProducts = useMemo(() => {
-    return products.filter((item) => {
-      const matchesCategory = selectedCategory === 'all' || item.category === selectedCategory;
+    return products.filter((p) => {
+      const matchesCategory =
+        selectedCategory === 'all' || p.category === selectedCategory;
       const matchesSearch =
-        searchQuery.trim() === '' ||
-        item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.brand.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.description.toLowerCase().includes(searchQuery.toLowerCase());
+        p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        p.brand.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        p.description.toLowerCase().includes(searchQuery.toLowerCase());
       return matchesCategory && matchesSearch;
     });
   }, [products, selectedCategory, searchQuery]);
 
-  const addToCart = useCallback((product: Product, quantity: number = 1) => {
+  const addToCart = useCallback((product: Product, quantity = 1) => {
     setCart((prev) => {
-      const existing = prev.find((item) => item.product.id === product.id);
-      if (existing) {
-        return prev.map((item) =>
-          item.product.id === product.id
-            ? { ...item, quantity: item.quantity + quantity }
-            : item
-        );
+      const existingIndex = prev.findIndex((item) => item.product.id === product.id);
+
+      if (existingIndex > -1) {
+        const updated = [...prev];
+        updated[existingIndex].quantity += quantity;
+        return updated;
       }
+
       return [...prev, { product, quantity }];
     });
   }, []);
@@ -137,7 +146,37 @@ export function MarketplaceProvider({ children }: { children: React.ReactNode })
       paymentMethod: 'card' | 'cod' | 'wallet'
     ): Promise<Order | null> => {
       if (cart.length === 0) return null;
-      const ownerUid = firebaseUser?.uid || 'guest-user';
+      const ownerUid = firebaseUser?.uid || profile?.uid || 'guest-user';
+      const provider: PaymentProvider =
+        paymentMethod === 'card'
+          ? 'stripe'
+          : paymentMethod === 'wallet'
+          ? 'payhere'
+          : 'cash_on_delivery';
+
+      // 1. Create PaymentIntent
+      const intent = await createPaymentIntent({
+        amount: cartTotal,
+        currency: 'LKR',
+        purpose: 'marketplace_order',
+        customerUid: ownerUid,
+        customerName: shippingAddress.fullName,
+        customerPhone: shippingAddress.phone,
+        provider,
+        metadata: {
+          itemCount: cart.length,
+          discount: discountAmount,
+        },
+      });
+
+      // 2. Confirm Payment
+      await confirmPayment(
+        intent.id,
+        `tx_order_${Date.now()}`,
+        provider
+      );
+
+      // 3. Create Order
       const order = await firebaseCreateOrder({
         ownerUid,
         items: [...cart],
@@ -158,7 +197,7 @@ export function MarketplaceProvider({ children }: { children: React.ReactNode })
       clearCart();
       return order;
     },
-    [cart, firebaseUser, subtotal, discountAmount, cartTotal, clearCart]
+    [cart, firebaseUser?.uid, profile?.uid, subtotal, discountAmount, cartTotal, clearCart]
   );
 
   const value = useMemo(
@@ -177,10 +216,10 @@ export function MarketplaceProvider({ children }: { children: React.ReactNode })
       cartTotal,
       cartItemCount,
       orders,
-      placeOrder,
       appliedCoupon,
       applyCoupon,
       discountAmount,
+      placeOrder,
     }),
     [
       products,
@@ -195,14 +234,18 @@ export function MarketplaceProvider({ children }: { children: React.ReactNode })
       cartTotal,
       cartItemCount,
       orders,
-      placeOrder,
       appliedCoupon,
       applyCoupon,
       discountAmount,
+      placeOrder,
     ]
   );
 
-  return <MarketplaceContext.Provider value={value}>{children}</MarketplaceContext.Provider>;
+  return (
+    <MarketplaceContext.Provider value={value}>
+      {children}
+    </MarketplaceContext.Provider>
+  );
 }
 
 export function useMarketplace() {
