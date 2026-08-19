@@ -90,7 +90,7 @@ export function subscribeToBillingHistory(
 
   void (async () => {
     try {
-      const { getFirestore, collection, query, where, onSnapshot } = await import('firebase/firestore');
+      const { getFirestore, collection, query, onSnapshot } = await import('firebase/firestore');
       const db = getFirestore();
       const q = query(
         collection(db, `users/${userId}/billing_history`)

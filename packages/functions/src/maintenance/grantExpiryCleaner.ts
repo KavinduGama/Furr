@@ -4,6 +4,7 @@ import * as admin from 'firebase-admin';
 /**
  * Runs once every 24 hours to automatically transition expired
  * temporary veterinary access grants to 'expired' status.
+ * Handles batched writes in chunks of 400 to never exceed Firestore 500 limit (MED-004).
  */
 export const cleanupExpiredGrants = onSchedule('every 24 hours', async () => {
   const db = admin.firestore();
@@ -20,17 +21,24 @@ export const cleanupExpiredGrants = onSchedule('every 24 hours', async () => {
     return;
   }
 
-  const batch = db.batch();
-  let count = 0;
+  const docs = grantsQuery.docs;
+  const CHUNK_SIZE = 400;
+  let totalExpired = 0;
 
-  grantsQuery.forEach((doc) => {
-    batch.update(doc.ref, {
-      status: 'expired',
-      expiredAt: now,
+  for (let i = 0; i < docs.length; i += CHUNK_SIZE) {
+    const chunk = docs.slice(i, i + CHUNK_SIZE);
+    const batch = db.batch();
+
+    chunk.forEach((doc) => {
+      batch.update(doc.ref, {
+        status: 'expired',
+        expiredAt: now,
+      });
+      totalExpired++;
     });
-    count++;
-  });
 
-  await batch.commit();
-  console.log(`Successfully expired ${count} access grants.`);
+    await batch.commit();
+  }
+
+  console.log(`Successfully expired ${totalExpired} access grants in ${Math.ceil(docs.length / CHUNK_SIZE)} batches.`);
 });

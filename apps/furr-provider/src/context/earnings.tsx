@@ -47,16 +47,16 @@ export function ProviderEarningsProvider({ children }: { children: React.ReactNo
     return () => unsub();
   }, [user]);
 
-  // Aggregate gross revenues
+  // Aggregate genuine gross revenues (MED-016)
   const servicesGross = bookings
     .filter((b) => b.status === 'completed')
-    .reduce((acc, b) => acc + b.price, 0) || 18500;
+    .reduce((acc, b) => acc + (b.price || 0), 0);
 
   const productsGross = orders
     .filter((o) => o.status === 'delivered' || o.status === 'shipped')
-    .reduce((acc, o) => acc + o.total, 0) || 27400;
+    .reduce((acc, o) => acc + (o.total || 0), 0);
 
-  const tipsGross = 2500;
+  const tipsGross = 0;
 
   const breakdown = calculateProviderEarnings(servicesGross, productsGross, tipsGross);
 
@@ -70,15 +70,18 @@ export function ProviderEarningsProvider({ children }: { children: React.ReactNo
 
   const availableBalance = Math.max(0, breakdown.netPayout - completedPayoutsTotal - pendingPayoutTotal);
 
+  const completedBookings = bookings.filter((b) => b.status === 'completed');
+  const completedOrders = orders.filter((o) => o.status === 'delivered');
+
   const summary: ProviderEarningsSummary = {
-    todayRevenue: 7000,
-    weekRevenue: 28500,
+    todayRevenue: 0,
+    weekRevenue: breakdown.netPayout,
     monthRevenue: breakdown.netPayout,
     lifetimeRevenue: breakdown.netPayout + completedPayoutsTotal,
     pendingPayout: pendingPayoutTotal,
-    availableBalance: availableBalance > 0 ? availableBalance : 14850,
-    completedBookingsCount: bookings.filter((b) => b.status === 'completed').length || 4,
-    completedOrdersCount: orders.filter((o) => o.status === 'delivered').length || 2,
+    availableBalance,
+    completedBookingsCount: completedBookings.length,
+    completedOrdersCount: completedOrders.length,
   };
 
   const requestPayout = async (amount: number, method: PayoutMethod, details: string) => {

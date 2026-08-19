@@ -1,8 +1,8 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { getCurrentUser, signOut as firebaseSignOut, DEV_BYPASS_CODE } from '@furr/firebase';
+import { subscribeToAuthState, getCurrentUser, signOut as firebaseSignOut } from '@furr/firebase';
 
 interface ProviderAuthContextType {
-  user: { uid: string; phone: string } | null;
+  user: { uid: string; phone: string; email?: string } | null;
   isLoading: boolean;
   signInDev: (phone?: string) => void;
   signOut: () => Promise<void>;
@@ -12,15 +12,39 @@ interface ProviderAuthContextType {
 const ProviderAuthContext = createContext<ProviderAuthContextType | undefined>(undefined);
 
 export function ProviderAuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<{ uid: string; phone: string } | null>({
-    uid: 'prov-1',
-    phone: '+94 77 123 4567',
+  const [user, setUser] = useState<{ uid: string; phone: string; email?: string } | null>(() => {
+    const current = getCurrentUser();
+    if (current) {
+      return {
+        uid: current.uid,
+        phone: current.phoneNumber || '+94 77 123 4567',
+        email: current.email || undefined,
+      };
+    }
+    return null;
   });
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const unsubscribe = subscribeToAuthState((firebaseUser) => {
+      if (firebaseUser) {
+        setUser({
+          uid: firebaseUser.uid,
+          phone: firebaseUser.phoneNumber || '+94 77 123 4567',
+          email: firebaseUser.email || undefined,
+        });
+      } else {
+        setUser(null);
+      }
+      setIsLoading(false);
+    });
+
+    return unsubscribe;
+  }, []);
 
   const signInDev = (phone: string = '+94 77 123 4567') => {
     setUser({
-      uid: 'prov-1',
+      uid: 'prov-' + Date.now().toString(36),
       phone,
     });
   };

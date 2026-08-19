@@ -38,6 +38,7 @@ const firestore_1 = require("firebase-functions/v2/firestore");
 const admin = __importStar(require("firebase-admin"));
 /**
  * Event Trigger: Recalculates average rating and review count when a review is created or updated.
+ * Validates rating bounds [1, 5] to protect against corrupted averages (LOW-006).
  */
 exports.onReviewCreatedOrUpdated = (0, firestore_1.onDocumentWritten)('reviews/{reviewId}', async (event) => {
     const after = event.data?.after;
@@ -58,7 +59,10 @@ exports.onReviewCreatedOrUpdated = (0, firestore_1.onDocumentWritten)('reviews/{
     const count = snap.size;
     let sum = 0;
     snap.forEach((doc) => {
-        sum += doc.data().rating || 0;
+        const raw = doc.data().rating;
+        // Clamp rating between 1 and 5
+        const rating = typeof raw === 'number' ? Math.min(5, Math.max(1, raw)) : 5;
+        sum += rating;
     });
     const averageRating = count > 0 ? Number((sum / count).toFixed(1)) : 0;
     // Update target document

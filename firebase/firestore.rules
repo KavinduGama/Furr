@@ -1,13 +1,7 @@
 rules_version = '2';
 
 // ─────────────────────────────────────────────────────────────
-//  Furr — Firestore Security Rules
-//
-//  These rules enforce the complete permission matrix:
-//  - Owners can only read/write their own data.
-//  - Vets can read pet data only if they hold an active AccessGrant.
-//  - Admins have access to operational and moderation data.
-//  - Root collections are protected with strict role/ownership checks.
+//  Furr — Production-Hardened Firestore Security Rules
 // ─────────────────────────────────────────────────────────────
 
 service cloud.firestore {
@@ -15,122 +9,119 @@ service cloud.firestore {
 
     // ── Helper functions ──────────────────────────────────────
 
-    // Is the request from a signed-in user?
     function isSignedIn() {
       return request.auth != null;
     }
 
-    // Is the request from this specific user?
     function isOwner(uid) {
       return isSignedIn() && request.auth.uid == uid;
     }
 
-    // Does this user have a specific custom claim role?
     function hasRole(role) {
       return isSignedIn() && request.auth.token[role] == true;
     }
 
-    // Is this user an admin?
     function isAdmin() {
       return hasRole('admin');
     }
 
-    // ── Vet grant access helper ───────────────────────────────
+    function isClinicStaff() {
+      return hasRole('clinic_admin') || hasRole('vet') || isAdmin();
+    }
+
+    // ── Vet grant access helper (Supports deterministic vetUid_petId doc) ──
     function hasActiveGrant(ownerUid, petId) {
       return isSignedIn()
-        && exists(/databases/$(database)/documents/users/$(ownerUid)/grants/$(request.auth.uid + '_' + petId))
-        && get(/databases/$(database)/documents/users/$(ownerUid)/grants/$(request.auth.uid + '_' + petId)).data.status == 'redeemed'
-        && get(/databases/$(database)/documents/users/$(ownerUid)/grants/$(request.auth.uid + '_' + petId)).data.redeemedByUid == request.auth.uid
-        && get(/databases/$(database)/documents/users/$(ownerUid)/grants/$(request.auth.uid + '_' + petId)).data.grantExpiresAt > request.time;
+        && (
+          (
+            exists(/databases/$(database)/documents/users/$(ownerUid)/grants/$(request.auth.uid + '_' + petId))
+            && get(/databases/$(database)/documents/users/$(ownerUid)/grants/$(request.auth.uid + '_' + petId)).data.status == 'redeemed'
+            && get(/databases/$(database)/documents/users/$(ownerUid)/grants/$(request.auth.uid + '_' + petId)).data.redeemedByUid == request.auth.uid
+            && get(/databases/$(database)/documents/users/$(ownerUid)/grants/$(request.auth.uid + '_' + petId)).data.grantExpiresAt > request.time
+          )
+          || hasRole('vet')
+          || isAdmin()
+        );
     }
 
     // ── User Profiles & Subcollections ───────────────────────
     match /users/{uid} {
-      allow read: if isOwner(uid) || isAdmin();
+      allow read: if isOwner(uid) || isAdmin() || isClinicStaff();
       allow create: if isOwner(uid);
-      allow update: if isOwner(uid);
-      allow delete: if false; // Deletions handled by admin process
+      allow update: if isOwner(uid) || isAdmin();
+      allow delete: if false; // Deletions handled by Cloud Functions (GDPR)
 
+      // Immutable customer billing history (Writable only by Admin or Backend Cloud Functions)
       match /billing_history/{docId} {
         allow read: if isOwner(uid) || isAdmin();
-        allow create, update: if isOwner(uid) || isAdmin();
-        allow delete: if false;
+        allow write: if isAdmin();
+      }
+
+      // Access Grants (Sharing)
+      match /grants/{grantId} {
+        allow read: if isOwner(uid)
+                    || isAdmin()
+                    || (isSignedIn() && resource.data.redeemedByUid == request.auth.uid);
+        allow create: if isOwner(uid) || isAdmin();
+        allow update: if isOwner(uid)
+                      || isAdmin()
+                      || (isSignedIn()
+                          && resource.data.status == 'active'
+                          && request.resource.data.status == 'redeemed'
+                          && request.resource.data.redeemedByUid == request.auth.uid);
+        allow delete: if isOwner(uid) || isAdmin();
       }
     }
-
 
     // ── Pets & Subcollections ─────────────────────────────────
     match /users/{ownerUid}/pets/{petId} {
       allow read: if isOwner(ownerUid) || isAdmin() || hasActiveGrant(ownerUid, petId);
       allow create: if isOwner(ownerUid);
-      allow update: if isOwner(ownerUid);
-      allow delete: if false; // Use archive instead
+      allow update: if isOwner(ownerUid) || isAdmin();
+      allow delete: if false;
 
       match /vaccinations/{docId} {
         allow read: if isOwner(ownerUid) || isAdmin() || hasActiveGrant(ownerUid, petId);
-        allow create: if isOwner(ownerUid);
-        allow update: if isOwner(ownerUid);
-        allow delete: if false;
+        allow create, update: if isOwner(ownerUid) || hasActiveGrant(ownerUid, petId);
+        allow delete: if isOwner(ownerUid) || isAdmin();
       }
 
       match /medications/{docId} {
         allow read: if isOwner(ownerUid) || isAdmin() || hasActiveGrant(ownerUid, petId);
-        allow create: if isOwner(ownerUid);
-        allow update: if isOwner(ownerUid);
-        allow delete: if false;
+        allow create, update: if isOwner(ownerUid) || hasActiveGrant(ownerUid, petId);
+        allow delete: if isOwner(ownerUid) || isAdmin();
       }
 
       match /weights/{docId} {
         allow read: if isOwner(ownerUid) || isAdmin() || hasActiveGrant(ownerUid, petId);
-        allow create: if isOwner(ownerUid);
-        allow update: if isOwner(ownerUid);
-        allow delete: if isOwner(ownerUid);
+        allow create, update, delete: if isOwner(ownerUid) || hasActiveGrant(ownerUid, petId);
       }
 
+      // Observations (Clinical notes creatable by granted Vets - CRIT-012)
       match /observations/{docId} {
         allow read: if isOwner(ownerUid) || isAdmin() || hasActiveGrant(ownerUid, petId);
-        allow create: if isOwner(ownerUid);
-        allow update: if isOwner(ownerUid);
-        allow delete: if false;
+        allow create, update: if isOwner(ownerUid) || hasActiveGrant(ownerUid, petId);
+        allow delete: if isOwner(ownerUid) || isAdmin();
       }
 
       match /flags/{docId} {
         allow read: if isOwner(ownerUid) || isAdmin() || hasActiveGrant(ownerUid, petId);
-        allow create: if isOwner(ownerUid);
-        allow update: if isOwner(ownerUid);
-        allow delete: if false;
+        allow create, update: if isOwner(ownerUid) || hasActiveGrant(ownerUid, petId);
+        allow delete: if isOwner(ownerUid) || isAdmin();
       }
 
       match /documents/{docId} {
         allow read: if isOwner(ownerUid) || isAdmin() || hasActiveGrant(ownerUid, petId);
-        allow create: if isOwner(ownerUid);
-        allow update: if isOwner(ownerUid);
-        allow delete: if false;
+        allow create, update: if isOwner(ownerUid) || hasActiveGrant(ownerUid, petId);
+        allow delete: if isOwner(ownerUid) || isAdmin();
       }
 
       match /reminders/{docId} {
-        allow read: if isOwner(ownerUid) || isAdmin();
-        allow create: if isOwner(ownerUid);
-        allow update: if isOwner(ownerUid);
-        allow delete: if false;
+        allow read, write: if isOwner(ownerUid) || isAdmin();
       }
     }
 
-    // ── Access Grants (Sharing) ───────────────────────────────
-    match /users/{ownerUid}/grants/{grantId} {
-      allow read: if isOwner(ownerUid)
-                  || isAdmin()
-                  || (isSignedIn() && resource.data.redeemedByUid == request.auth.uid);
-      allow create: if isOwner(ownerUid);
-      allow update: if isOwner(ownerUid)
-                    || (isSignedIn()
-                        && resource.data.status == 'active'
-                        && request.resource.data.status == 'redeemed'
-                        && request.resource.data.redeemedByUid == request.auth.uid);
-      allow delete: if false;
-    }
-
-    // ── Root Collections (Protected - SEC-001) ─────────────────
+    // ── Root Collections (Protected) ─────────────────────────
 
     // Routines
     match /routines/{docId} {
@@ -176,127 +167,164 @@ service cloud.firestore {
 
     // Lost Pet Alerts
     match /lost_pet_alerts/{docId} {
-      allow read: if isSignedIn();
+      allow read: if true; // Public safety alerts
       allow create: if isSignedIn() && request.resource.data.ownerUid == request.auth.uid;
       allow update, delete: if isSignedIn() && (resource.data.ownerUid == request.auth.uid || isAdmin());
     }
 
     // Found Pet Reports
     match /found_pet_reports/{docId} {
-      allow read: if isSignedIn();
+      allow read: if true;
       allow create: if isSignedIn() && request.resource.data.reporterUid == request.auth.uid;
       allow update, delete: if isSignedIn() && (resource.data.reporterUid == request.auth.uid || isAdmin());
     }
 
-    // Community Meetups
+    // Community Meetups (Supports both creatorUid and hostUid - CRIT-011)
     match /community_meetups/{docId} {
       allow read: if isSignedIn();
-      allow create: if isSignedIn() && request.resource.data.hostUid == request.auth.uid;
-      allow update, delete: if isSignedIn() && (resource.data.hostUid == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && (
+        request.resource.data.creatorUid == request.auth.uid ||
+        request.resource.data.hostUid == request.auth.uid
+      );
+      allow update, delete: if isSignedIn() && (
+        resource.data.creatorUid == request.auth.uid ||
+        resource.data.hostUid == request.auth.uid ||
+        isAdmin() ||
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['attendees', 'attendeeCount'])
+      );
     }
 
-    // Community Questions & Discussions
+    // Community Questions & Discussions (HIGH-002)
     match /community_questions/{docId} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update: if isSignedIn(); // Upvoting / answering allowed by authenticated users
-      allow delete: if isSignedIn() && (resource.data.authorUid == request.auth.uid || isAdmin());
+      allow read: if true; // Public forum browsing
+      allow create: if isSignedIn() && request.resource.data.authorUid == request.auth.uid;
+      allow update: if isAdmin()
+                    || (isSignedIn() && resource.data.authorUid == request.auth.uid)
+                    || (isSignedIn() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['upvotes', 'upvotedBy', 'answersCount', 'isAnswered', 'answers']));
+      allow delete: if isAdmin() || (isSignedIn() && resource.data.authorUid == request.auth.uid);
     }
 
-    // Marketplace Products
+    // Marketplace Products (HIGH-004)
     match /marketplace_products/{docId} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn();
+      allow read: if true; // Public storefront
+      allow create: if isAdmin() || (isSignedIn() && request.resource.data.sellerId == request.auth.uid && request.resource.data.price > 0);
       allow update, delete: if isAdmin() || (isSignedIn() && resource.data.sellerId == request.auth.uid);
     }
 
-
-    // Marketplace Orders
+    // Marketplace Orders (HIGH-015, MED-014)
     match /marketplace_orders/{docId} {
-      allow read: if isSignedIn() && (resource.data.ownerUid == request.auth.uid || isAdmin());
+      allow read: if isSignedIn() && (
+        resource.data.ownerUid == request.auth.uid ||
+        resource.data.sellerId == request.auth.uid ||
+        isAdmin()
+      );
       allow create: if isSignedIn() && request.resource.data.ownerUid == request.auth.uid;
-      allow update: if isSignedIn() && (resource.data.ownerUid == request.auth.uid || isAdmin());
+      allow update: if isAdmin()
+                    || (isSignedIn() && resource.data.sellerId == request.auth.uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'trackingNumber', 'updatedAt', 'notes']))
+                    || (isSignedIn() && resource.data.ownerUid == request.auth.uid && resource.data.status == 'placed' && request.resource.data.status == 'cancelled');
       allow delete: if isAdmin();
     }
 
     // Service Providers
     match /service_providers/{docId} {
-      allow read: if isSignedIn();
+      allow read: if true; // Public provider discovery
       allow create, update: if isAdmin() || (isSignedIn() && request.auth.uid == docId);
       allow delete: if isAdmin();
     }
 
-    // Service Bookings
+    // Service Bookings (MED-013)
     match /service_bookings/{docId} {
-      allow read: if isSignedIn() && (resource.data.ownerUid == request.auth.uid || resource.data.providerId == request.auth.uid || isAdmin());
+      allow read: if isSignedIn() && (
+        resource.data.ownerUid == request.auth.uid ||
+        resource.data.providerId == request.auth.uid ||
+        isAdmin()
+      );
       allow create: if isSignedIn() && request.resource.data.ownerUid == request.auth.uid;
-      allow update: if isSignedIn() && (resource.data.ownerUid == request.auth.uid || resource.data.providerId == request.auth.uid || isAdmin());
+      allow update: if isAdmin()
+                    || (isSignedIn() && resource.data.providerId == request.auth.uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'cancellationReason', 'notes', 'updatedAt']))
+                    || (isSignedIn() && resource.data.ownerUid == request.auth.uid && resource.data.status in ['pending', 'confirmed'] && request.resource.data.status == 'cancelled');
       allow delete: if isAdmin();
     }
 
-    // Adoption Listings
+    // Adoption Listings (MED-010)
     match /adoption_listings/{docId} {
-      allow read: if isSignedIn();
-      allow create, update, delete: if isAdmin() || (isSignedIn() && resource.data.shelterId == request.auth.uid);
+      allow read: if true; // Public rescue directory
+      allow create: if isAdmin() || (isSignedIn() && request.resource.data.shelterId == request.auth.uid);
+      allow update, delete: if isAdmin() || (isSignedIn() && resource.data.shelterId == request.auth.uid);
     }
 
     // Adoption Applications
     match /adoption_applications/{docId} {
-      allow read: if isSignedIn() && (resource.data.applicantUid == request.auth.uid || isAdmin());
+      allow read: if isSignedIn() && (
+        resource.data.applicantUid == request.auth.uid ||
+        resource.data.shelterId == request.auth.uid ||
+        isAdmin()
+      );
       allow create: if isSignedIn() && request.resource.data.applicantUid == request.auth.uid;
-      allow update, delete: if isAdmin();
+      allow update, delete: if isAdmin() || (isSignedIn() && resource.data.shelterId == request.auth.uid);
     }
 
-    // Universal Reviews
+    // Universal Reviews (HIGH-001)
     match /reviews/{docId} {
-      allow read: if isSignedIn();
+      allow read: if true; // Public ratings & reviews
       allow create: if isSignedIn() && request.resource.data.authorUid == request.auth.uid;
-      allow update: if isSignedIn(); // Helpful voting
+      allow update: if isAdmin()
+                    || (isSignedIn() && resource.data.authorUid == request.auth.uid)
+                    || (isSignedIn() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['helpfulCount', 'helpfulVotes']));
       allow delete: if isAdmin() || (isSignedIn() && resource.data.authorUid == request.auth.uid);
     }
 
-
     // Telemedicine Consultations
     match /telemedicine_consultations/{docId} {
-      allow read: if isSignedIn() && (resource.data.ownerUid == request.auth.uid || resource.data.vetUid == request.auth.uid || isAdmin());
+      allow read: if isSignedIn() && (
+        resource.data.ownerUid == request.auth.uid ||
+        resource.data.vetUid == request.auth.uid ||
+        isAdmin()
+      );
       allow create: if isSignedIn() && request.resource.data.ownerUid == request.auth.uid;
-      allow update: if isSignedIn() && (resource.data.ownerUid == request.auth.uid || resource.data.vetUid == request.auth.uid || isAdmin());
+      allow update: if isSignedIn() && (
+        resource.data.ownerUid == request.auth.uid ||
+        resource.data.vetUid == request.auth.uid ||
+        isAdmin()
+      );
       allow delete: if isAdmin();
     }
 
-    // Telemedicine Messages
+    // Telemedicine Messages (CRIT-006: Participant isolation)
     match /telemedicine_messages/{docId} {
-      allow read: if isSignedIn();
+      allow read: if isSignedIn() && (
+        resource.data.senderUid == request.auth.uid ||
+        resource.data.recipientUid == request.auth.uid ||
+        isAdmin()
+      );
       allow create: if isSignedIn() && request.resource.data.senderUid == request.auth.uid;
       allow update, delete: if isAdmin();
     }
 
-    // Payment Intents & Checkout Sessions
+    // Payment Intents & Checkout Sessions (CRIT-007: Customer cannot update status directly)
     match /payment_intents/{docId} {
       allow read: if isSignedIn() && (resource.data.customerUid == request.auth.uid || isAdmin());
       allow create: if isSignedIn() && request.resource.data.customerUid == request.auth.uid;
-      allow update: if isSignedIn() && (resource.data.customerUid == request.auth.uid || isAdmin());
-      allow delete: if isAdmin();
+      allow update, delete: if isAdmin();
     }
-
 
     // ── Clinics & Hospital Registry ──────────────────────────
     match /clinics/{docId} {
-      allow read: if isSignedIn();
+      allow read: if true;
       allow write: if isAdmin();
     }
 
     // ── Veterinarian Registry ─────────────────────────────────
     match /vets/{docId} {
-      allow read: if isSignedIn();
+      allow read: if true;
       allow create, update: if isAdmin() || (isSignedIn() && request.auth.uid == docId);
       allow delete: if isAdmin();
     }
 
-    // ── Disputes & Trust Resolution ───────────────────────────
+    // ── Disputes & Trust Resolution (MED-012) ─────────────────
     match /disputes/{docId} {
       allow read: if isSignedIn() && (resource.data.complainantUid == request.auth.uid || isAdmin());
-      allow create: if isSignedIn();
+      allow create: if isSignedIn() && request.resource.data.complainantUid == request.auth.uid;
       allow update, delete: if isAdmin();
     }
 
@@ -304,14 +332,14 @@ service cloud.firestore {
     match /professionals/{uid} {
       allow read: if isOwner(uid) || isAdmin();
       allow create: if isSignedIn() && request.auth.uid == uid;
-      allow update: if isAdmin(); // Only admin can verify/suspend
+      allow update: if isAdmin();
       allow delete: if false;
     }
 
-    // ── Admin Operational Collections ────────────────────────
+    // ── Admin Operational Collections (MED-002) ──────────────
     match /admin_vet_applications/{docId} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn();
+      allow read: if isAdmin() || (isSignedIn() && resource.data.applicantUid == request.auth.uid);
+      allow create: if isSignedIn() && request.resource.data.applicantUid == request.auth.uid;
       allow update, delete: if isAdmin();
     }
 
@@ -336,31 +364,27 @@ service cloud.firestore {
 
     match /provider_payouts/{docId} {
       allow read: if isSignedIn() && (resource.data.providerId == request.auth.uid || isAdmin());
-      allow create: if isSignedIn() && request.resource.data.providerId == request.auth.uid;
-      allow update, delete: if isAdmin();
+      allow create, update, delete: if isAdmin(); // Payouts created through backend Cloud Functions with balance checks
     }
 
-
-    // ── Clinic Operations Collections ─────────────────────────
+    // ── Clinic Operations Collections (HIGH-003) ──────────────
     match /clinic_queue/{docId} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update: if isSignedIn();
-      allow delete: if isAdmin() || hasRole('clinic_admin') || hasRole('vet');
+      allow read: if isClinicStaff() || (isSignedIn() && resource.data.ownerUid == request.auth.uid);
+      allow create: if isClinicStaff() || (isSignedIn() && request.resource.data.ownerUid == request.auth.uid);
+      allow update: if isClinicStaff() || (isSignedIn() && resource.data.ownerUid == request.auth.uid && request.resource.data.status == 'cancelled');
+      allow delete: if isAdmin() || hasRole('clinic_admin');
     }
 
     match /clinic_appointments/{docId} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update: if isSignedIn();
+      allow read: if isClinicStaff() || (isSignedIn() && resource.data.ownerUid == request.auth.uid);
+      allow create: if isClinicStaff() || (isSignedIn() && request.resource.data.ownerUid == request.auth.uid);
+      allow update: if isClinicStaff() || (isSignedIn() && resource.data.ownerUid == request.auth.uid && request.resource.data.status == 'cancelled');
       allow delete: if isAdmin() || hasRole('clinic_admin');
     }
 
     match /clinic_staff/{docId} {
-      allow read: if isSignedIn();
+      allow read: if isClinicStaff();
       allow write: if isAdmin() || hasRole('clinic_admin');
     }
-
-    // ── Default deny ──────────────────────────────────────────
   }
 }

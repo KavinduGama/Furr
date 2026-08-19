@@ -147,8 +147,8 @@ export function getCurrentUser(): User | null {
 // ── Dev bypass (no Firebase config) ─────────────────────────
 
 /**
- * A mock ConfirmationResult used when Firebase is not configured.
- * Accepts the code "123456" to simulate a successful OTP.
+ * A mock ConfirmationResult used when Firebase is not configured in development.
+ * Automatically disabled in production environments (MED-001).
  */
 export const DEV_BYPASS_CODE = '123456';
 
@@ -156,14 +156,17 @@ export class DevConfirmationResult implements ConfirmationResult {
   verificationId = 'dev-bypass';
 
   async confirm(code: string): Promise<UserCredential> {
+    if (process.env.NODE_ENV === 'production') {
+      throw Object.assign(new Error('Dev bypass is disabled in production'), { code: 'auth/operation-not-allowed' });
+    }
     if (code !== DEV_BYPASS_CODE) {
       throw Object.assign(new Error('Wrong OTP'), { code: 'auth/invalid-verification-code' });
     }
-    // Return a minimal mock UserCredential — only user.uid and user.phoneNumber are used
+    // Return a minimal mock UserCredential in local development
     const mockUser = {
       uid: 'dev-uid-local',
       phoneNumber: '+94770000000',
-      displayName: null,
+      displayName: 'Dev Pet Owner',
       email: null,
       emailVerified: false,
       isAnonymous: false,

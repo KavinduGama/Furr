@@ -1,14 +1,23 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.isValidExpoPushToken = isValidExpoPushToken;
 exports.sendExpoPushNotifications = sendExpoPushNotifications;
+function isValidExpoPushToken(token) {
+    if (typeof token !== 'string')
+        return false;
+    return token.startsWith('ExponentPushToken[') ||
+        token.startsWith('ExpoPushToken[') ||
+        token.startsWith('ExponentPushToken') ||
+        token.startsWith('ExpoPushToken');
+}
 async function sendExpoPushNotifications(messages) {
     if (messages.length === 0)
         return;
     const validMessages = messages.filter((m) => {
         if (Array.isArray(m.to)) {
-            return m.to.length > 0;
+            return m.to.length > 0 && m.to.every(isValidExpoPushToken);
         }
-        return typeof m.to === 'string' && m.to.startsWith('ExponentPushToken');
+        return isValidExpoPushToken(m.to);
     });
     if (validMessages.length === 0)
         return;

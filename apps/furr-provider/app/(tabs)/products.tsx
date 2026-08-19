@@ -63,12 +63,12 @@ export default function ProductsScreen() {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerTopRow}>
-          <div>
+          <View>
             <Text style={styles.headerTitle}>Marketplace Studio</Text>
             <Text style={styles.headerSubtitle}>
               Catalog inventory, stock levels, and courier dispatch.
             </Text>
-          </div>
+          </View>
           {activeSubTab === 'inventory' && (
             <TouchableOpacity
               style={styles.addProductBtn}

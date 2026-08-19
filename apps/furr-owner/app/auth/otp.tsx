@@ -86,13 +86,16 @@ export default function OtpScreen() {
   };
 
   const displayPhone = formatPhoneDisplay(phone ?? '');
+  const attemptedCodeRef = useRef<string>('');
 
-  // Auto-verify when 6 digits are entered
+  // Auto-verify when 6 digits are entered (MED-019)
   useEffect(() => {
-    if (code.length === 6 && !loading) {
+    if (code.length < 6) {
+      attemptedCodeRef.current = '';
+    } else if (code.length === 6 && !loading && attemptedCodeRef.current !== code) {
+      attemptedCodeRef.current = code;
       handleVerify();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [code, loading]);
 
 

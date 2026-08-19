@@ -118,7 +118,9 @@ export function AdminGate({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!firebaseConfigured) {
-      setStatus('allowed');
+      // In local dev without Firebase env configured, show warning on login screen
+      setStatus('signed-out');
+      setError('Firebase credentials not configured in environment.');
       return;
     }
 
@@ -129,8 +131,8 @@ export function AdminGate({ children }: { children: React.ReactNode }) {
       }
       try {
         const token = await user.getIdTokenResult();
-        // Allow if has admin claim or if running with dev bypass / test admin
-        if (token.claims.admin === true || user.email?.endsWith('@furr.lk')) {
+        // Enforce admin custom claim or admin role
+        if (token.claims.admin === true || token.claims.role === 'admin') {
           setStatus('allowed');
           setError(null);
         } else {
@@ -152,18 +154,16 @@ export function AdminGate({ children }: { children: React.ReactNode }) {
     try {
       if (firebaseConfigured) {
         await signInWithEmail(email.trim(), password);
+      } else {
+        setError('Firebase not configured. Please set NEXT_PUBLIC_FIREBASE environment variables.');
+        setStatus('signed-out');
       }
-      setStatus('allowed');
     } catch (err: any) {
       setError(err?.message || 'Failed to sign in. Please verify your credentials.');
       setStatus('signed-out');
     } finally {
       setSubmitting(false);
     }
-  };
-
-  const bypassSignIn = () => {
-    setStatus('allowed');
   };
 
   if (status === 'loading') {
@@ -202,12 +202,13 @@ export function AdminGate({ children }: { children: React.ReactNode }) {
 
         <form onSubmit={submit} className="space-y-4">
           <div>
-            <label className="block text-xs font-bold text-stone-600 uppercase tracking-wider mb-1">Email</label>
+            <label className="block text-xs font-bold text-stone-600 uppercase tracking-wider mb-1">Admin Email</label>
             <input
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               type="email"
               required
+              placeholder="admin@furr.lk"
               className="w-full bg-stone-50 border border-stone-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#006B78]"
             />
           </div>
@@ -227,19 +228,16 @@ export function AdminGate({ children }: { children: React.ReactNode }) {
           <button
             type="submit"
             disabled={submitting}
-            className="w-full bg-[#02202B] hover:bg-[#003B46] text-white py-3 rounded-xl font-bold text-sm transition shadow-sm"
+            className="w-full bg-[#02202B] hover:bg-[#003B46] text-white py-3 rounded-xl font-bold text-sm transition shadow-sm cursor-pointer disabled:opacity-50"
           >
             {submitting ? 'Authenticating…' : 'Sign in securely'}
           </button>
         </form>
 
         <div className="border-t border-stone-100 pt-4 text-center">
-          <button
-            onClick={bypassSignIn}
-            className="text-xs font-bold text-[#006B78] hover:underline"
-          >
-            ⚡ Quick Enter as Super Admin (Dev Bypass)
-          </button>
+          <p className="text-[11px] text-stone-400">
+            Access to this system is restricted to authorized Furr personnel only.
+          </p>
         </div>
       </div>
     </section>

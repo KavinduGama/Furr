@@ -251,65 +251,182 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
   const updateOrderStatus = (orderId: string, status: AdminOrder['status'], tracking?: string) => {
     setOrders((prev) => prev.map((o) => (o.id === orderId ? { ...o, status, trackingNumber: tracking || o.trackingNumber } : o)));
     addAuditLog('Updated Order Status', 'MARKETPLACE', `Order ${orderId} status set to ${status}.`);
+    void (async () => {
+      try {
+        const { getFirestore, doc, updateDoc } = await import('firebase/firestore');
+        const db = getFirestore();
+        await updateDoc(doc(db, 'marketplace_orders', orderId), {
+          status,
+          trackingNumber: tracking || null,
+          updatedAt: new Date().toISOString(),
+        });
+      } catch (err) {
+        console.warn('Persist order status fallback:', err);
+      }
+    })();
   };
 
   const toggleVerifyProvider = (id: string) => {
     const prov = providers.find((p) => p.id === id);
-    setProviders((prev) => prev.map((p) => (p.id === id ? { ...p, isVerified: !p.isVerified } : p)));
+    const nextVerified = !prov?.isVerified;
+    setProviders((prev) => prev.map((p) => (p.id === id ? { ...p, isVerified: nextVerified } : p)));
     if (prov) {
-      addAuditLog(prov.isVerified ? 'Revoked Provider Verification' : 'Verified Specialist Provider', 'SERVICES', `${prov.name} (${prov.category}).`);
+      addAuditLog(nextVerified ? 'Verified Specialist Provider' : 'Revoked Provider Verification', 'SERVICES', `${prov.name} (${prov.category}).`);
+      void (async () => {
+        try {
+          const { getFirestore, doc, updateDoc } = await import('firebase/firestore');
+          const db = getFirestore();
+          await updateDoc(doc(db, 'service_providers', id), {
+            isVerified: nextVerified,
+            updatedAt: new Date().toISOString(),
+          });
+        } catch (err) {
+          console.warn('Persist provider verification fallback:', err);
+        }
+      })();
     }
   };
 
   const updateBookingStatus = (id: string, status: ServiceBooking['status']) => {
     setBookings((prev) => prev.map((b) => (b.id === id ? { ...b, status } : b)));
     addAuditLog('Updated Booking Status', 'SERVICES', `Booking ${id} set to ${status}.`);
+    void (async () => {
+      try {
+        const { getFirestore, doc, updateDoc } = await import('firebase/firestore');
+        const db = getFirestore();
+        await updateDoc(doc(db, 'service_bookings', id), {
+          status,
+          updatedAt: new Date().toISOString(),
+        });
+      } catch (err) {
+        console.warn('Persist booking status fallback:', err);
+      }
+    })();
   };
 
   const toggleSponsorMeetup = (id: string) => {
-    setMeetups((prev) => prev.map((m) => (m.id === id ? { ...m, isSponsored: !m.isSponsored } : m)));
-    addAuditLog('Toggled Meetup Sponsorship', 'COMMUNITY', `Meetup ${id} sponsorship status modified.`);
+    const meetup = meetups.find((m) => m.id === id);
+    const nextSponsored = !meetup?.isSponsored;
+    setMeetups((prev) => prev.map((m) => (m.id === id ? { ...m, isSponsored: nextSponsored } : m)));
+    addAuditLog('Toggled Meetup Sponsorship', 'COMMUNITY', `Meetup ${id} sponsorship status set to ${nextSponsored}.`);
+    void (async () => {
+      try {
+        const { getFirestore, doc, updateDoc } = await import('firebase/firestore');
+        const db = getFirestore();
+        await updateDoc(doc(db, 'community_meetups', id), {
+          isSponsored: nextSponsored,
+          updatedAt: new Date().toISOString(),
+        });
+      } catch (err) {
+        console.warn('Persist meetup sponsorship fallback:', err);
+      }
+    })();
   };
 
   const deleteQuestion = (id: string) => {
     setQuestions((prev) => prev.filter((q) => q.id !== id));
     addAuditLog('Deleted Inappropriate Forum Question', 'COMMUNITY', `Deleted forum post ID: ${id}`);
+    void (async () => {
+      try {
+        const { getFirestore, doc, deleteDoc } = await import('firebase/firestore');
+        const db = getFirestore();
+        await deleteDoc(doc(db, 'community_questions', id));
+      } catch (err) {
+        console.warn('Persist delete question fallback:', err);
+      }
+    })();
   };
 
   const resolveLostAlert = (id: string) => {
     setLostAlerts((prev) => prev.map((a) => (a.id === id ? { ...a, status: 'resolved' as const } : a)));
     addAuditLog('Resolved Lost Pet Amber Alert', 'COMMUNITY', `Marked alert ${id} as reunited/resolved.`);
+    void (async () => {
+      try {
+        const { getFirestore, doc, updateDoc } = await import('firebase/firestore');
+        const db = getFirestore();
+        await updateDoc(doc(db, 'lost_pet_alerts', id), {
+          status: 'resolved',
+          updatedAt: new Date().toISOString(),
+        });
+      } catch (err) {
+        console.warn('Persist lost alert resolution fallback:', err);
+      }
+    })();
   };
 
   const resolveDispute = (id: string, resolutionNotes: string, action: 'refund' | 'dismiss' | 'resolve') => {
-    setDisputes((prev) => prev.map((d) => (d.id === id ? { ...d, status: action === 'dismiss' ? 'dismissed' : 'resolved', resolutionNotes } : d)));
+    const finalStatus = action === 'dismiss' ? 'dismissed' : 'resolved';
+    setDisputes((prev) => prev.map((d) => (d.id === id ? { ...d, status: finalStatus, resolutionNotes } : d)));
     addAuditLog('Dispute Ticket Resolved', 'SECURITY', `Ticket ${id} resolved with action [${action}]: ${resolutionNotes}`);
+    void (async () => {
+      try {
+        const { getFirestore, doc, setDoc } = await import('firebase/firestore');
+        const db = getFirestore();
+        await setDoc(doc(db, 'disputes', id), {
+          status: finalStatus,
+          resolutionNotes,
+          resolvedAt: new Date().toISOString(),
+        }, { merge: true });
+      } catch (err) {
+        console.warn('Persist dispute resolution fallback:', err);
+      }
+    })();
   };
 
   const toggleUserStatus = (userId: string) => {
     const user = users.find((u) => u.id === userId);
+    if (!user) return;
+    const nextStatus = user.status === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE';
     setUsers((prev) =>
-      prev.map((u) => {
-        if (u.id === userId) {
-          const nextStatus = u.status === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE';
-          return { ...u, status: nextStatus as AdminUserAccount['status'] };
-        }
-        return u;
-      })
+      prev.map((u) => (u.id === userId ? { ...u, status: nextStatus as AdminUserAccount['status'] } : u))
     );
-    if (user) {
-      addAuditLog(user.status === 'ACTIVE' ? 'Suspended User Account' : 'Reactivated User Account', 'USER', `User ${user.id} (${user.email || user.phone}).`);
-    }
+    addAuditLog(nextStatus === 'SUSPENDED' ? 'Suspended User Account' : 'Reactivated User Account', 'USER', `User ${userId} (${user.email || user.phone}).`);
+    void (async () => {
+      try {
+        const { getFirestore, doc, updateDoc } = await import('firebase/firestore');
+        const db = getFirestore();
+        await updateDoc(doc(db, 'users', userId), {
+          accountStatus: nextStatus === 'ACTIVE' ? 'active' : 'suspended',
+          updatedAt: new Date().toISOString(),
+        });
+      } catch (err) {
+        console.warn('Persist user status fallback:', err);
+      }
+    })();
   };
 
   const changeUserRole = (userId: string, newRole: AdminUserAccount['role']) => {
     setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, role: newRole } : u)));
     addAuditLog('Changed User Role', 'USER', `User ${userId} promoted/assigned to role: ${newRole}.`);
+    void (async () => {
+      try {
+        const { getFirestore, doc, updateDoc } = await import('firebase/firestore');
+        const db = getFirestore();
+        await updateDoc(doc(db, 'users', userId), {
+          role: newRole.toLowerCase(),
+          updatedAt: new Date().toISOString(),
+        });
+      } catch (err) {
+        console.warn('Persist user role fallback:', err);
+      }
+    })();
   };
 
   const settlePayout = (id: string) => {
     setPayouts((prev) => prev.map((p) => (p.id === id ? { ...p, status: 'settled' } : p)));
     addAuditLog('Settled Vendor Payout', 'FINANCE', `Payout ticket ${id} marked as settled.`);
+    void (async () => {
+      try {
+        const { getFirestore, doc, setDoc } = await import('firebase/firestore');
+        const db = getFirestore();
+        await setDoc(doc(db, 'provider_payouts', id), {
+          status: 'settled',
+          settledAt: new Date().toISOString(),
+        }, { merge: true });
+      } catch (err) {
+        console.warn('Persist payout settlement fallback:', err);
+      }
+    })();
   };
 
   return (

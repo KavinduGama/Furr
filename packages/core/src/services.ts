@@ -161,7 +161,7 @@ export function isProviderAvailable(
   if (!provider.availableDays || provider.availableDays.length === 0) return true;
 
   const date = new Date(dateString);
-  if (isNaN(date.getTime())) return true;
+  if (isNaN(date.getTime())) return false;
 
   const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   const dayName = days[date.getDay()];

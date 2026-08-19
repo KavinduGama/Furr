@@ -36,12 +36,19 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.writeAdminAuditLog = void 0;
 const https_1 = require("firebase-functions/v2/https");
 const admin = __importStar(require("firebase-admin"));
+const crypto = __importStar(require("crypto"));
 /**
  * Secure callable function to record tamper-proof administrator audit trail entries.
+ * Enforces admin claim verification (HIGH-008) and collision-resistant IDs (LOW-005).
  */
 exports.writeAdminAuditLog = (0, https_1.onCall)(async (request) => {
     if (!request.auth) {
         throw new https_1.HttpsError('unauthenticated', 'Authentication required.');
+    }
+    // Admin authorization check (HIGH-008)
+    const isAdmin = request.auth.token?.admin === true || request.auth.token?.role === 'admin';
+    if (!isAdmin) {
+        throw new https_1.HttpsError('permission-denied', 'Only authorized administrators can record audit log entries.');
     }
     const { action, category, details } = request.data;
     if (!action || !category || !details) {
@@ -49,8 +56,9 @@ exports.writeAdminAuditLog = (0, https_1.onCall)(async (request) => {
     }
     const db = admin.firestore();
     const user = await admin.auth().getUser(request.auth.uid).catch(() => null);
+    const logUuid = crypto.randomUUID();
     const entry = {
-        id: `log-${Date.now()}`,
+        id: `log-${logUuid}`,
         timestamp: new Date().toISOString(),
         adminUid: request.auth.uid,
         adminName: user?.displayName || 'Administrator',
@@ -60,7 +68,8 @@ exports.writeAdminAuditLog = (0, https_1.onCall)(async (request) => {
         details,
         serverTimestamp: admin.firestore.FieldValue.serverTimestamp(),
     };
-    const docRef = await db.collection('admin_audit_logs').add(entry);
-    return { success: true, logId: docRef.id };
+    const docRef = db.collection('admin_audit_logs').doc(entry.id);
+    await docRef.set(entry);
+    return { success: true, logId: entry.id };
 });
 //# sourceMappingURL=auditLogWriter.js.map

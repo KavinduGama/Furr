@@ -1,5 +1,5 @@
 /**
- * Send push notifications via Expo's free push notification service.
+ * Send push notifications via Expo's push notification service (MED-007).
  */
 export interface ExpoPushMessage {
   to: string | string[];
@@ -12,14 +12,22 @@ export interface ExpoPushMessage {
   priority?: 'default' | 'normal' | 'high';
 }
 
+export function isValidExpoPushToken(token: string): boolean {
+  if (typeof token !== 'string') return false;
+  return token.startsWith('ExponentPushToken[') ||
+         token.startsWith('ExpoPushToken[') ||
+         token.startsWith('ExponentPushToken') ||
+         token.startsWith('ExpoPushToken');
+}
+
 export async function sendExpoPushNotifications(messages: ExpoPushMessage[]): Promise<void> {
   if (messages.length === 0) return;
 
   const validMessages = messages.filter((m) => {
     if (Array.isArray(m.to)) {
-      return m.to.length > 0;
+      return m.to.length > 0 && m.to.every(isValidExpoPushToken);
     }
-    return typeof m.to === 'string' && m.to.startsWith('ExponentPushToken');
+    return isValidExpoPushToken(m.to);
   });
 
   if (validMessages.length === 0) return;

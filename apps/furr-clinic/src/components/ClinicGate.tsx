@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, FormEvent } from 'react';
+import React, { useState, useEffect, FormEvent } from 'react';
 import { useClinic, CLINIC_BRANCHES, type ClinicBranch, type ClinicOperator } from '@/context/ClinicContext';
 
 const DEV_OPERATORS: ClinicOperator[] = [
@@ -137,37 +137,69 @@ export function ClinicHeaderBar({ onSignOut }: { onSignOut: () => void }) {
 
 export function ClinicGate({ children }: { children: React.ReactNode }) {
   const { setBranch, setOperator } = useClinic();
-  const [isAuthenticated, setIsAuthenticated] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [selectedBranchId, setSelectedBranchId] = useState(CLINIC_BRANCHES[0].id);
-  const [email, setEmail] = useState('admin@colombocentral.lk');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+  useEffect(() => {
+    let active = true;
+    void (async () => {
+      try {
+        const { subscribeToAuthState } = await import('@furr/firebase');
+        const unsub = subscribeToAuthState(async (user) => {
+          if (!active) return;
+          if (user) {
+            const branch = CLINIC_BRANCHES.find((b) => b.id === selectedBranchId) || CLINIC_BRANCHES[0];
+            setBranch(branch);
+            setOperator({
+              name: user.displayName || user.email?.split('@')[0] || 'Clinic Staff',
+              email: user.email || 'staff@clinic.furr.lk',
+              role: 'Clinic Administrator',
+            });
+            setIsAuthenticated(true);
+          } else {
+            setIsAuthenticated(false);
+          }
+        });
+        return unsub;
+      } catch {
+        // Fallback for offline dev
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [selectedBranchId, setBranch, setOperator]);
+
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setSubmitting(true);
-    setTimeout(() => {
+    setError(null);
+
+    try {
+      const { signInWithEmail } = await import('@furr/firebase');
+      await signInWithEmail(email.trim(), password);
       const branch = CLINIC_BRANCHES.find((b) => b.id === selectedBranchId) || CLINIC_BRANCHES[0];
       setBranch(branch);
       setOperator({
-        name: 'Nalinda Jayasuriya',
+        name: email.split('@')[0] || 'Clinic Staff',
         email,
         role: 'Clinic Administrator',
       });
       setIsAuthenticated(true);
+    } catch (err: any) {
+      setError(err?.message || 'Invalid clinic staff credentials.');
+    } finally {
       setSubmitting(false);
-    }, 300);
-  };
-
-  const handleDevBypass = (op: ClinicOperator, branch: ClinicBranch) => {
-    setBranch(branch);
-    setOperator(op);
-    setIsAuthenticated(true);
+    }
   };
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-6 bg-slate-100">
+      <div className="min-h-screen flex items-center justify-center p-6 bg-slate-100 w-full">
         <div className="max-w-md w-full bg-white rounded-3xl p-8 border border-stone-200 shadow-xl space-y-6">
           <div className="text-center">
             <div className="w-12 h-12 bg-sky-700 rounded-2xl text-white font-black text-xl flex items-center justify-center mx-auto shadow-md">
@@ -178,7 +210,7 @@ export function ClinicGate({ children }: { children: React.ReactNode }) {
             </p>
             <h1 className="text-2xl font-black text-stone-900 mt-1">Furr Clinic System</h1>
             <p className="text-xs text-stone-500 mt-1">
-              Patient intake queue, appointments scheduling, and clinic files.
+              Patient intake queue, appointments scheduling, and clinic medical files.
             </p>
           </div>
 
@@ -207,6 +239,7 @@ export function ClinicGate({ children }: { children: React.ReactNode }) {
               <input
                 type="email"
                 required
+                placeholder="staff@clinic.furr.lk"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full bg-stone-50 border border-stone-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-sky-600"
@@ -219,6 +252,7 @@ export function ClinicGate({ children }: { children: React.ReactNode }) {
               </label>
               <input
                 type="password"
+                required
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -226,35 +260,25 @@ export function ClinicGate({ children }: { children: React.ReactNode }) {
               />
             </div>
 
+            {error && (
+              <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-xs font-bold text-red-700">
+                {error}
+              </div>
+            )}
+
             <button
               type="submit"
               disabled={submitting}
-              className="w-full bg-sky-700 hover:bg-sky-800 text-white py-3 rounded-xl font-bold text-sm transition shadow-sm"
+              className="w-full bg-sky-700 hover:bg-sky-800 text-white py-3 rounded-xl font-bold text-sm transition shadow-sm cursor-pointer disabled:opacity-50"
             >
               {submitting ? 'Authenticating Staff…' : 'Sign in to Clinic Terminal'}
             </button>
           </form>
 
-          <div className="border-t border-stone-100 pt-4 text-center space-y-2">
-            <p className="text-[11px] font-bold text-stone-400 uppercase tracking-wider">
-              Quick Dev Terminal Sign-In
+          <div className="border-t border-stone-100 pt-4 text-center">
+            <p className="text-[11px] text-stone-400">
+              Authorized clinical personnel access only. All actions are logged.
             </p>
-            <div className="flex flex-col gap-1.5">
-              <button
-                type="button"
-                onClick={() => handleDevBypass(DEV_OPERATORS[0], CLINIC_BRANCHES[0])}
-                className="text-xs font-bold text-sky-800 hover:underline bg-sky-50 py-2 px-3 rounded-xl transition"
-              >
-                🏥 Enter as Nalinda (Admin · Colombo Central)
-              </button>
-              <button
-                type="button"
-                onClick={() => handleDevBypass(DEV_OPERATORS[1], CLINIC_BRANCHES[0])}
-                className="text-xs font-bold text-stone-700 hover:underline bg-stone-100 py-2 px-3 rounded-xl transition"
-              >
-                💉 Enter as Sister Dilani (Triage Nurse)
-              </button>
-            </div>
           </div>
         </div>
       </div>

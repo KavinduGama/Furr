@@ -37,12 +37,15 @@ export { SHARE_CATEGORIES } from './sharing';
 
 // ── Roles ────────────────────────────────────────────────────
 
-export type AppRole = 'owner' | 'professional' | 'clinic_operator' | 'admin';
+export type AppRole = 'owner' | 'vet' | 'clinic_admin' | 'seller' | 'admin' | 'professional' | 'clinic_operator';
 
 export const roles: Record<AppRole, string> = {
   owner: 'Pet owner',
+  vet: 'Veterinary professional',
   professional: 'Veterinary professional',
+  clinic_admin: 'Clinic operator',
   clinic_operator: 'Clinic operator',
+  seller: 'Marketplace vendor',
   admin: 'Furr administrator',
 };
 
@@ -91,7 +94,7 @@ export type OwnerProfile = {
   createdAt: string;
   accountStatus: 'active' | 'suspended' | 'pending_deletion' | 'deleted';
   subscriptionTier?: 'free' | 'plus' | 'family';
-  role?: 'owner' | 'vet' | 'admin' | 'clinic_admin';
+  role?: AppRole;
 };
 
 // ── Pet ───────────────────────────────────────────────────────

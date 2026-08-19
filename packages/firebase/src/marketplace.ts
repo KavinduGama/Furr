@@ -134,15 +134,15 @@ export function subscribeToProducts(
 
   void (async () => {
     try {
-      const { getFirestore, collection, onSnapshot } = await import('firebase/firestore');
+      const { getFirestore, collection, query, where, onSnapshot } = await import('firebase/firestore');
       const db = getFirestore();
       const colRef = collection(db, 'marketplace_products');
+      const q = categoryFilter ? query(colRef, where('category', '==', categoryFilter)) : query(colRef);
 
       unsubscribe = onSnapshot(
-        colRef,
+        q,
         (snapshot) => {
           if (snapshot.empty) {
-            // Return fallback seed products if Firestore collection not yet populated
             const filtered = categoryFilter
               ? INITIAL_PRODUCTS.filter((p) => p.category === categoryFilter)
               : INITIAL_PRODUCTS;
@@ -152,9 +152,7 @@ export function subscribeToProducts(
           const prods: Product[] = [];
           snapshot.forEach((docSnap) => {
             const data = docSnap.data() as Product;
-            if (!categoryFilter || data.category === categoryFilter) {
-              prods.push({ ...data, id: docSnap.id });
-            }
+            prods.push({ ...data, id: docSnap.id });
           });
           onUpdate(prods.length > 0 ? prods : INITIAL_PRODUCTS);
         },

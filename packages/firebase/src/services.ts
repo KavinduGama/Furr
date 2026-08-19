@@ -260,7 +260,7 @@ export async function createServiceBooking(
     const booking: ServiceBooking = {
       ...bookingData,
       id: newRef.id,
-      status: 'confirmed',
+      status: 'pending',
       createdAt: new Date().toISOString(),
     };
     await setDoc(newRef, booking);
@@ -270,7 +270,7 @@ export async function createServiceBooking(
     const mockBooking: ServiceBooking = {
       ...bookingData,
       id: 'book-' + Date.now(),
-      status: 'confirmed',
+      status: 'pending',
       createdAt: new Date().toISOString(),
     };
     return mockBooking;

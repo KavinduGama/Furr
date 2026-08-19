@@ -40,6 +40,7 @@ const expoPush_1 = require("../utils/expoPush");
 /**
  * Hourly scheduled task to check for due pet care & medication reminders
  * and dispatch push notifications to owners.
+ * Features per-item error isolation so single push failures never block remaining items (MED-006).
  */
 exports.sendReminderNotifications = (0, scheduler_1.onSchedule)({
     schedule: 'every 1 hours',
@@ -61,38 +62,43 @@ exports.sendReminderNotifications = (0, scheduler_1.onSchedule)({
         }
         console.log(`[sendReminderNotifications] Processing ${snapshot.size} due reminders.`);
         for (const doc of snapshot.docs) {
-            const reminder = doc.data();
-            const ownerUid = reminder.ownerUid;
-            if (ownerUid) {
-                // Fetch owner's push token
-                const userDoc = await db.collection('users').doc(ownerUid).get();
-                const pushToken = userDoc.data()?.expoPushToken;
-                if (pushToken) {
-                    await (0, expoPush_1.sendExpoPushNotifications)([
-                        {
-                            to: pushToken,
-                            title: `🐾 Reminder: ${reminder.title || 'Pet Care Task'}`,
-                            body: reminder.body || 'You have a scheduled pet care task due now.',
-                            data: {
-                                type: 'care_reminder',
-                                reminderId: doc.id,
-                                petId: reminder.petId,
+            try {
+                const reminder = doc.data();
+                const ownerUid = reminder.ownerUid;
+                if (ownerUid) {
+                    // Fetch owner's push token
+                    const userDoc = await db.collection('users').doc(ownerUid).get();
+                    const pushToken = userDoc.data()?.expoPushToken;
+                    if (pushToken) {
+                        await (0, expoPush_1.sendExpoPushNotifications)([
+                            {
+                                to: pushToken,
+                                title: `🐾 Reminder: ${reminder.title || 'Pet Care Task'}`,
+                                body: reminder.body || 'You have a scheduled pet care task due now.',
+                                data: {
+                                    type: 'care_reminder',
+                                    reminderId: doc.id,
+                                    petId: reminder.petId,
+                                },
+                                sound: 'default',
+                                priority: 'high',
                             },
-                            sound: 'default',
-                            priority: 'high',
-                        },
-                    ]);
+                        ]);
+                    }
                 }
+                // Mark as processed/notified
+                await doc.ref.update({
+                    status: 'notified',
+                    notifiedAt: nowIso,
+                });
             }
-            // Mark as processed/notified
-            await doc.ref.update({
-                status: 'notified',
-                notifiedAt: nowIso,
-            });
+            catch (itemErr) {
+                console.error(`[sendReminderNotifications] Failed to process reminder ${doc.id}:`, itemErr);
+            }
         }
     }
     catch (err) {
-        console.error('[sendReminderNotifications] Error executing reminder scheduler:', err);
+        console.error('[sendReminderNotifications] Error executing reminder scheduler query:', err);
     }
 });
 //# sourceMappingURL=sendReminderNotifications.js.map
