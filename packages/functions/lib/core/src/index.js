@@ -30,8 +30,11 @@ var sharing_1 = require("./sharing");
 Object.defineProperty(exports, "SHARE_CATEGORIES", { enumerable: true, get: function () { return sharing_1.SHARE_CATEGORIES; } });
 exports.roles = {
     owner: 'Pet owner',
+    vet: 'Veterinary professional',
     professional: 'Veterinary professional',
+    clinic_admin: 'Clinic operator',
     clinic_operator: 'Clinic operator',
+    seller: 'Marketplace vendor',
     admin: 'Furr administrator',
 };
 // ── Phone normalisation ───────────────────────────────────────

@@ -37,14 +37,35 @@ exports.handlePaymentWebhook = void 0;
 const https_1 = require("firebase-functions/v2/https");
 const admin = __importStar(require("firebase-admin"));
 const crypto = __importStar(require("crypto"));
+function verifyWebhookSignature(payload, signature, secret) {
+    try {
+        const expectedSig = crypto.createHmac('sha256', secret).update(payload).digest('hex');
+        const sigBuffer = Buffer.from(signature.replace(/^sha256=/, ''), 'hex');
+        const expectedBuffer = Buffer.from(expectedSig, 'hex');
+        if (sigBuffer.length !== expectedBuffer.length)
+            return false;
+        return crypto.timingSafeEqual(sigBuffer, expectedBuffer);
+    }
+    catch {
+        return false;
+    }
+}
 exports.handlePaymentWebhook = (0, https_1.onCall)(async (request) => {
     const { intentId, transactionReference, provider = 'stripe', webhookSecret, signature } = request.data || {};
     if (!intentId) {
         throw new https_1.HttpsError('invalid-argument', 'Missing payment intentId');
     }
     const expectedSecret = process.env.PAYMENT_WEBHOOK_SECRET || process.env.STRIPE_WEBHOOK_SECRET;
-    // Authorization check (CRIT-001 & CRIT-002)
-    const isServerWebhook = Boolean(expectedSecret && (webhookSecret === expectedSecret || signature));
+    // Cryptographic authorization check (CRIT-001)
+    let isServerWebhook = false;
+    if (expectedSecret) {
+        if (webhookSecret && webhookSecret === expectedSecret) {
+            isServerWebhook = true;
+        }
+        else if (signature && verifyWebhookSignature(intentId, signature, expectedSecret)) {
+            isServerWebhook = true;
+        }
+    }
     const isUserAuth = Boolean(request.auth?.uid);
     if (!isServerWebhook && !isUserAuth) {
         throw new https_1.HttpsError('unauthenticated', 'Caller must be authenticated or provide a valid payment gateway signature');

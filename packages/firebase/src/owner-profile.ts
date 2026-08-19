@@ -85,11 +85,17 @@ export async function updatePushToken(
 ): Promise<void> {
   if (IS_DEV_BYPASS) return;
 
+  const clean = (expoPushToken || '').trim();
+  if (!clean || !/^(Expo(nent)?PushToken\[|FCM:)/.test(clean)) {
+    console.warn('Invalid push token format. Skipping write:', expoPushToken);
+    return;
+  }
+
   const { getFirestore, doc, setDoc, serverTimestamp } = await import('firebase/firestore');
   await setDoc(
     doc(getFirestore(), 'users', uid),
     {
-      expoPushToken,
+      expoPushToken: clean,
       notificationsEnabled: true,
       updatedAt: serverTimestamp(),
     },

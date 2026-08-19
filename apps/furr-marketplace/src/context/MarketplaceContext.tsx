@@ -101,17 +101,19 @@ export function MarketplaceProvider({ children }: { children: React.ReactNode })
 
   // Cart Operations
   const addToCart = (product: Product, quantity = 1) => {
+    const maxStock = Math.max(1, product.stock ?? 99);
     setCart((prev) => {
       const idx = prev.findIndex((item) => item.product.id === product.id);
       if (idx >= 0) {
         const updated = [...prev];
+        const newQty = Math.min(maxStock, updated[idx].quantity + quantity);
         updated[idx] = {
           ...updated[idx],
-          quantity: updated[idx].quantity + quantity,
+          quantity: newQty,
         };
         return updated;
       }
-      return [...prev, { product, quantity }];
+      return [...prev, { product, quantity: Math.min(maxStock, quantity) }];
     });
   };
 
@@ -125,9 +127,13 @@ export function MarketplaceProvider({ children }: { children: React.ReactNode })
       return;
     }
     setCart((prev) =>
-      prev.map((item) =>
-        item.product.id === productId ? { ...item, quantity } : item
-      )
+      prev.map((item) => {
+        if (item.product.id === productId) {
+          const maxStock = Math.max(1, item.product.stock ?? 99);
+          return { ...item, quantity: Math.min(maxStock, quantity) };
+        }
+        return item;
+      })
     );
   };
 
@@ -204,13 +210,14 @@ export function MarketplaceProvider({ children }: { children: React.ReactNode })
     return (b.isFeatured ? 1 : 0) - (a.isFeatured ? 1 : 0);
   });
 
-  // Place Order
+  // Place Order (HIGH-004: unique guest ID generated if unauthenticated)
   const placeOrder = async (
     shippingAddress: OrderAddress,
     paymentMethod: 'card' | 'cod' | 'wallet'
   ): Promise<Order> => {
+    const ownerUid = user?.uid || `guest-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
     const orderData: Omit<Order, 'id' | 'createdAt'> = {
-      ownerUid: user?.uid || 'guest-web-user',
+      ownerUid,
       items: cart,
       subtotal,
       deliveryFee,

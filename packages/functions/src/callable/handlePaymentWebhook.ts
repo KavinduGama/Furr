@@ -10,6 +10,18 @@ export interface PaymentWebhookInput {
   signature?: string;
 }
 
+function verifyWebhookSignature(payload: string, signature: string, secret: string): boolean {
+  try {
+    const expectedSig = crypto.createHmac('sha256', secret).update(payload).digest('hex');
+    const sigBuffer = Buffer.from(signature.replace(/^sha256=/, ''), 'hex');
+    const expectedBuffer = Buffer.from(expectedSig, 'hex');
+    if (sigBuffer.length !== expectedBuffer.length) return false;
+    return crypto.timingSafeEqual(sigBuffer, expectedBuffer);
+  } catch {
+    return false;
+  }
+}
+
 export const handlePaymentWebhook = onCall<PaymentWebhookInput>(async (request) => {
   const { intentId, transactionReference, provider = 'stripe', webhookSecret, signature } = request.data || {};
 
@@ -19,8 +31,16 @@ export const handlePaymentWebhook = onCall<PaymentWebhookInput>(async (request) 
 
   const expectedSecret = process.env.PAYMENT_WEBHOOK_SECRET || process.env.STRIPE_WEBHOOK_SECRET;
 
-  // Authorization check (CRIT-001 & CRIT-002)
-  const isServerWebhook = Boolean(expectedSecret && (webhookSecret === expectedSecret || signature));
+  // Cryptographic authorization check (CRIT-001)
+  let isServerWebhook = false;
+  if (expectedSecret) {
+    if (webhookSecret && webhookSecret === expectedSecret) {
+      isServerWebhook = true;
+    } else if (signature && verifyWebhookSignature(intentId, signature, expectedSecret)) {
+      isServerWebhook = true;
+    }
+  }
+
   const isUserAuth = Boolean(request.auth?.uid);
 
   if (!isServerWebhook && !isUserAuth) {

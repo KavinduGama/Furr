@@ -9,6 +9,7 @@ export default function AuthPage() {
   const router = useRouter();
   const { user, signIn, signUp } = useAuth();
   const [isRegister, setIsRegister] = useState(false);
+  const isDev = process.env.NODE_ENV === 'development';
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -33,6 +34,20 @@ export default function AuthPage() {
     );
   }
 
+  const sanitizeAuthError = (err: any) => {
+    const code = err?.code || '';
+    if (code.includes('user-not-found') || code.includes('wrong-password') || code.includes('invalid-credential') || code.includes('invalid-login-credentials')) {
+      return 'Invalid email or password. Please try again.';
+    }
+    if (code.includes('email-already-in-use')) {
+      return 'An account with this email already exists.';
+    }
+    if (code.includes('weak-password')) {
+      return 'Password should be at least 6 characters.';
+    }
+    return err?.message || 'Authentication failed. Please check your credentials.';
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -46,26 +61,25 @@ export default function AuthPage() {
       }
       router.push('/products');
     } catch (err: any) {
-      console.error('Auth error:', err);
-      setError(err?.message || 'Authentication failed. Please check your credentials.');
+      setError(sanitizeAuthError(err));
     } finally {
       setLoading(false);
     }
   };
 
   const handleDemoSignIn = async () => {
+    if (!isDev) return;
     setError('');
     setLoading(true);
     try {
       await signIn('owner@furr.lk', 'password123');
       router.push('/products');
     } catch {
-      // If demo user doesn't exist yet, sign up
       try {
         await signUp('owner@furr.lk', 'password123', 'Demo Pet Parent');
         router.push('/products');
       } catch (e: any) {
-        setError(e?.message || 'Failed to sign in demo account.');
+        setError(sanitizeAuthError(e));
       }
     } finally {
       setLoading(false);
@@ -171,17 +185,19 @@ export default function AuthPage() {
           )}
         </div>
 
-        {/* Quick Demo button */}
-        <div className="pt-4 border-t border-stone-100">
-          <button
-            type="button"
-            onClick={handleDemoSignIn}
-            disabled={loading}
-            className="w-full py-2.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold text-xs transition cursor-pointer"
-          >
-            ⚡ Quick Sign In as Demo Pet Parent
-          </button>
-        </div>
+        {/* Quick Demo button - gated strictly behind development environment (CRIT-008) */}
+        {isDev && (
+          <div className="pt-4 border-t border-stone-100">
+            <button
+              type="button"
+              onClick={handleDemoSignIn}
+              disabled={loading}
+              className="w-full py-2.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold text-xs transition cursor-pointer"
+            >
+              ⚡ Quick Sign In as Demo Pet Parent (Dev Only)
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

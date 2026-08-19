@@ -194,13 +194,14 @@ service cloud.firestore {
       );
     }
 
-    // Community Questions & Discussions (HIGH-002)
+    // Community Questions & Discussions (HIGH-002, HIGH-015)
     match /community_questions/{docId} {
       allow read: if true; // Public forum browsing
       allow create: if isSignedIn() && request.resource.data.authorUid == request.auth.uid;
       allow update: if isAdmin()
                     || (isSignedIn() && resource.data.authorUid == request.auth.uid)
-                    || (isSignedIn() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['upvotes', 'upvotedBy', 'answersCount', 'isAnswered', 'answers']));
+                    || (isSignedIn() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['upvotes', 'upvotedBy', 'answersCount'])
+                        && request.resource.data.upvotedBy.hasAll(resource.data.upvotedBy));
       allow delete: if isAdmin() || (isSignedIn() && resource.data.authorUid == request.auth.uid);
     }
 
@@ -211,7 +212,7 @@ service cloud.firestore {
       allow update, delete: if isAdmin() || (isSignedIn() && resource.data.sellerId == request.auth.uid);
     }
 
-    // Marketplace Orders (HIGH-015, MED-014)
+    // Marketplace Orders (HIGH-013, HIGH-015, MED-014)
     match /marketplace_orders/{docId} {
       allow read: if isSignedIn() && (
         resource.data.ownerUid == request.auth.uid ||
@@ -220,7 +221,11 @@ service cloud.firestore {
       );
       allow create: if isSignedIn() && request.resource.data.ownerUid == request.auth.uid;
       allow update: if isAdmin()
-                    || (isSignedIn() && resource.data.sellerId == request.auth.uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'trackingNumber', 'updatedAt', 'notes']))
+                    || (isSignedIn()
+                        && resource.data.sellerId == request.auth.uid
+                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'trackingNumber', 'updatedAt', 'notes'])
+                        && request.resource.data.status in ['processing', 'shipped', 'cancelled']
+                       )
                     || (isSignedIn() && resource.data.ownerUid == request.auth.uid && resource.data.status == 'placed' && request.resource.data.status == 'cancelled');
       allow delete: if isAdmin();
     }
@@ -264,13 +269,14 @@ service cloud.firestore {
       allow update, delete: if isAdmin() || (isSignedIn() && resource.data.shelterId == request.auth.uid);
     }
 
-    // Universal Reviews (HIGH-001)
+    // Universal Reviews (HIGH-001, HIGH-016)
     match /reviews/{docId} {
       allow read: if true; // Public ratings & reviews
       allow create: if isSignedIn() && request.resource.data.authorUid == request.auth.uid;
       allow update: if isAdmin()
                     || (isSignedIn() && resource.data.authorUid == request.auth.uid)
-                    || (isSignedIn() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['helpfulCount', 'helpfulVotes']));
+                    || (isSignedIn() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['helpfulCount', 'helpfulVotes'])
+                        && request.resource.data.helpfulVotes.hasAll(resource.data.helpfulVotes));
       allow delete: if isAdmin() || (isSignedIn() && resource.data.authorUid == request.auth.uid);
     }
 

@@ -66,7 +66,6 @@ export {
   getCurrentUser,
   clearRecaptchaVerifier,
   DevConfirmationResult,
-  DEV_BYPASS_CODE,
   type AuthUser,
 } from './auth';
 

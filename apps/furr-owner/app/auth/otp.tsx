@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { User } from 'firebase/auth';
 import { formatPhoneDisplay } from '@furr/core';
-import { clearRecaptchaVerifier, DevConfirmationResult, DEV_BYPASS_CODE, sendPhoneOtp, verifyOtp } from '@furr/firebase';
+import { clearRecaptchaVerifier, DevConfirmationResult, sendPhoneOtp, verifyOtp } from '@furr/firebase';
 import { Button, KeyboardScreen, OtpInput, colors, radius, space } from '@furr/ui';
 import { useAuth, useDevBypass } from '@/src/context/auth';
 
@@ -112,7 +112,6 @@ export default function OtpScreen() {
         <Text style={styles.copy}>
           Enter the 6-digit code sent to{'\n'}
           <Text style={styles.phoneHighlight}>{displayPhone}</Text>
-          {IS_DEV_BYPASS && `\n\n⚙ Dev mode: use code ${DEV_BYPASS_CODE}`}
         </Text>
       </View>
 

@@ -22,7 +22,10 @@ export const INITIAL_BILLING_HISTORY: BillingHistoryItem[] = [
 export async function createPaymentIntent(
   data: Omit<PaymentIntent, 'id' | 'createdAt' | 'status'>
 ): Promise<PaymentIntent> {
-  const intentId = 'pi_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
+  const randomSuffix = typeof crypto !== 'undefined' && crypto.randomUUID
+    ? crypto.randomUUID().replace(/-/g, '').substring(0, 12)
+    : Math.random().toString(36).substring(2, 12);
+  const intentId = `pi_${Date.now()}_${randomSuffix}`;
   const intent: PaymentIntent = {
     ...data,
     id: intentId,

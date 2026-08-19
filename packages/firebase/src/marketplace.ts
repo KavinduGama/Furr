@@ -241,6 +241,23 @@ export async function createOrder(orderData: Omit<Order, 'id' | 'createdAt'>): P
       createdAt: new Date().toISOString(),
     };
     await setDoc(newRef, order);
+
+    // Call Cloud Function to server-validate inventory and prices if functions SDK is available (CRIT-007)
+    try {
+      const { getFunctions, httpsCallable } = await import('firebase/functions');
+      const functions = getFunctions();
+      const processOrderFn = httpsCallable<any, any>(functions, 'processMarketplaceOrder');
+      await processOrderFn({
+        orderId: order.id,
+        items: order.items.map((i) => ({ productId: i.product.id, quantity: i.quantity })),
+        totalLkr: order.total,
+        ownerUid: order.ownerUid,
+        deliveryAddress: `${order.shippingAddress.streetAddress}, ${order.shippingAddress.city}`,
+      });
+    } catch (fnErr) {
+      console.warn('Backend processMarketplaceOrder confirmation notice:', fnErr);
+    }
+
     return order;
   } catch (e) {
     console.warn('Local fallback for createOrder:', e);

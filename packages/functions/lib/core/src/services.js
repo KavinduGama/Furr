@@ -42,7 +42,7 @@ function isProviderAvailable(provider, dateString, _timeSlotString) {
         return true;
     const date = new Date(dateString);
     if (isNaN(date.getTime()))
-        return true;
+        return false;
     const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     const dayName = days[date.getDay()];
     return provider.availableDays.includes(dayName);

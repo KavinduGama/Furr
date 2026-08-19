@@ -43,6 +43,10 @@ export function ProviderAuthProvider({ children }: { children: React.ReactNode }
   }, []);
 
   const signInDev = (phone: string = '+94 77 123 4567') => {
+    if (process.env.NODE_ENV === 'production') {
+      console.warn('Dev authentication is disabled in production.');
+      return;
+    }
     setUser({
       uid: 'prov-' + Date.now().toString(36),
       phone,

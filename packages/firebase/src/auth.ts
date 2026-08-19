@@ -150,7 +150,7 @@ export function getCurrentUser(): User | null {
  * A mock ConfirmationResult used when Firebase is not configured in development.
  * Automatically disabled in production environments (MED-001).
  */
-export const DEV_BYPASS_CODE = '123456';
+const DEV_BYPASS_CODE = '123456';
 
 export class DevConfirmationResult implements ConfirmationResult {
   verificationId = 'dev-bypass';

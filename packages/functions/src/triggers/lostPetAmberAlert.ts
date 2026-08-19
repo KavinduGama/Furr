@@ -16,12 +16,13 @@ export const onLostPetAlertCreated = onDocumentCreated(
     const petName = alert.petName;
     const species = alert.species;
 
-    // Query pet owners who have enabled notifications in this district
+    // Query pet owners who have enabled notifications in this district (capped at 200 to prevent timeout - MED-021)
     const db = admin.firestore();
     const usersSnap = await db
       .collection('users')
       .where('district', '==', city)
       .where('notificationsEnabled', '==', true)
+      .limit(200)
       .get();
 
     const pushTokens: string[] = [];

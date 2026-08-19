@@ -65,27 +65,31 @@ function AdminHeaderBar() {
               <p className="text-sm font-black text-[#02202B] mt-0.5">{adminUser.email}</p>
             </div>
 
-            <p className="text-[10px] font-bold text-stone-400 uppercase tracking-wider px-3 mb-1">Switch Admin Persona (Dev)</p>
-            <div className="space-y-1 mb-2">
-              <button
-                onClick={() => switchRole('Super Administrator', 'admin@furr.lk', 'Global Platform Admin')}
-                className="w-full text-left px-3 py-2 text-xs font-bold hover:bg-stone-50 rounded-xl text-stone-800 transition"
-              >
-                🛡️ Super Administrator
-              </button>
-              <button
-                onClick={() => switchRole('Dr. Sarah Smith (SLVC Liaison)', 'slvc.liaison@furr.lk', 'Trust & Safety Officer')}
-                className="w-full text-left px-3 py-2 text-xs font-bold hover:bg-stone-50 rounded-xl text-stone-800 transition"
-              >
-                🩺 Trust & Safety (SLVC)
-              </button>
-              <button
-                onClick={() => switchRole('Operations Lead', 'ops@furr.lk', 'Marketplace & Logistics Lead')}
-                className="w-full text-left px-3 py-2 text-xs font-bold hover:bg-stone-50 rounded-xl text-stone-800 transition"
-              >
-                📦 Marketplace & Ops Lead
-              </button>
-            </div>
+            {process.env.NODE_ENV === 'development' && (
+              <>
+                <p className="text-[10px] font-bold text-stone-400 uppercase tracking-wider px-3 mb-1">Switch Admin Persona (Dev)</p>
+                <div className="space-y-1 mb-2">
+                  <button
+                    onClick={() => switchRole('Super Administrator', 'admin@furr.lk', 'Global Platform Admin')}
+                    className="w-full text-left px-3 py-2 text-xs font-bold hover:bg-stone-50 rounded-xl text-stone-800 transition"
+                  >
+                    🛡️ Super Administrator
+                  </button>
+                  <button
+                    onClick={() => switchRole('Dr. Sarah Smith (SLVC Liaison)', 'slvc.liaison@furr.lk', 'Trust & Safety Officer')}
+                    className="w-full text-left px-3 py-2 text-xs font-bold hover:bg-stone-50 rounded-xl text-stone-800 transition"
+                  >
+                    🩺 Trust & Safety (SLVC)
+                  </button>
+                  <button
+                    onClick={() => switchRole('Operations Lead', 'ops@furr.lk', 'Marketplace & Logistics Lead')}
+                    className="w-full text-left px-3 py-2 text-xs font-bold hover:bg-stone-50 rounded-xl text-stone-800 transition"
+                  >
+                    📦 Marketplace & Ops Lead
+                  </button>
+                </div>
+              </>
+            )}
 
             <div className="border-t border-stone-100 pt-2">
               <button
@@ -108,9 +112,7 @@ function AdminHeaderBar() {
 }
 
 export function AdminGate({ children }: { children: React.ReactNode }) {
-  const [status, setStatus] = useState<'loading' | 'signed-out' | 'denied' | 'allowed'>(
-    firebaseConfigured ? 'loading' : 'allowed'
-  );
+  const [status, setStatus] = useState<'loading' | 'signed-out' | 'denied' | 'allowed'>('loading');
   const [email, setEmail] = useState('admin@furr.lk');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);

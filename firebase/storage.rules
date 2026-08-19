@@ -59,7 +59,7 @@ service firebase.storage {
     // Marketplace product images (Public read for web/app, write by admin/seller)
     match /products/{fileName} {
       allow read: if true;
-      allow write: if isAdmin() || (isSignedIn() && request.auth.token.seller == true);
+      allow write: if (isAdmin() || (isSignedIn() && request.auth.token.seller == true)) && isValidSize() && isImage();
     }
 
     // User review upload photos
