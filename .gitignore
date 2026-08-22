@@ -24,6 +24,7 @@ dist/
 **/*.tsbuildinfo
 .turbo/
 **/.turbo/
+packages/functions/lib/
 
 # Environment files
 .env

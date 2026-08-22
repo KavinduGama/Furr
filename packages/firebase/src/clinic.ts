@@ -203,7 +203,7 @@ export function subscribeToClinicQueue(onUpdate: (queue: ClinicQueueItem[]) => v
 }
 
 export async function addClinicQueueItem(item: Omit<ClinicQueueItem, 'id'>): Promise<ClinicQueueItem> {
-  const newId = `Q-${Math.floor(100 + Math.random() * 900)}`;
+  const newId = `Q-${Date.now().toString(36).toUpperCase()}`;
   const created: ClinicQueueItem = { ...item, id: newId };
   if (IS_DEV_BYPASS) return created;
 

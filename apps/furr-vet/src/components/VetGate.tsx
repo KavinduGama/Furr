@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { useAuth } from '@/context/auth';
 import { devProfessionalProfiles } from '@furr/firebase';
 
+const isDev = process.env.NODE_ENV === 'development';
+
 function VetHeaderBar() {
   const { profile, signOut, signIn } = useAuth();
   const [showMenu, setShowMenu] = useState(false);
@@ -71,23 +73,28 @@ function VetHeaderBar() {
                   <p className="text-[11px] text-stone-500">{profile?.district} · Reg: {profile?.registrationNumber}</p>
                 </div>
 
-                <p className="text-[10px] font-bold text-stone-400 uppercase tracking-wider px-3 mb-1">
-                  Switch Practitioner (Dev)
-                </p>
-                <div className="space-y-1 mb-2">
-                  {devProfessionalProfiles.map((p) => (
-                    <button
-                      key={p.uid}
-                      onClick={() => {
-                        signIn(p.email, 'password');
-                        setShowMenu(false);
-                      }}
-                      className="w-full text-left px-3 py-1.5 text-xs font-bold hover:bg-stone-50 rounded-lg text-stone-800 transition"
-                    >
-                      🩺 {p.fullName} ({p.registrationNumber})
-                    </button>
-                  ))}
-                </div>
+                {/* Dev practitioner switcher — only visible in development (HIGH-A) */}
+                {isDev && (
+                  <>
+                    <p className="text-[10px] font-bold text-stone-400 uppercase tracking-wider px-3 mb-1">
+                      Switch Practitioner (Dev)
+                    </p>
+                    <div className="space-y-1 mb-2">
+                      {devProfessionalProfiles.map((p) => (
+                        <button
+                          key={p.uid}
+                          onClick={() => {
+                            signIn(p.email, 'password');
+                            setShowMenu(false);
+                          }}
+                          className="w-full text-left px-3 py-1.5 text-xs font-bold hover:bg-stone-50 rounded-lg text-stone-800 transition"
+                        >
+                          🩺 {p.fullName} ({p.registrationNumber})
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
 
                 <div className="border-t border-stone-100 pt-2">
                   <button
@@ -207,27 +214,30 @@ export function VetGate({ children }: { children: React.ReactNode }) {
           </button>
         </form>
 
-        <div className="border-t border-stone-100 pt-4 text-center space-y-2">
-          <p className="text-[11px] font-bold text-stone-400 uppercase tracking-wider">
-            Quick Dev Practitioner Sign-In
-          </p>
-          <div className="flex flex-col gap-1.5">
-            <button
-              type="button"
-              onClick={() => handleDevBypass('dr.weerasinghe@colombovet.lk')}
-              className="text-xs font-bold text-[#006B78] hover:underline bg-[#E6F4F5] py-2 px-3 rounded-xl transition"
-            >
-              🩺 Enter as Dr. Sarah Weerasinghe (SLVC-8924)
-            </button>
-            <button
-              type="button"
-              onClick={() => handleDevBypass('dr.silva@kandypetcare.lk')}
-              className="text-xs font-bold text-stone-700 hover:underline bg-stone-100 py-2 px-3 rounded-xl transition"
-            >
-              🩺 Enter as Dr. Nuwan Silva (SLVC-7719)
-            </button>
+        {/* Quick Dev Sign-In — only visible in development (HIGH-A) */}
+        {isDev && (
+          <div className="border-t border-stone-100 pt-4 text-center space-y-2">
+            <p className="text-[11px] font-bold text-stone-400 uppercase tracking-wider">
+              Quick Dev Practitioner Sign-In
+            </p>
+            <div className="flex flex-col gap-1.5">
+              <button
+                type="button"
+                onClick={() => handleDevBypass('dr.weerasinghe@colombovet.lk')}
+                className="text-xs font-bold text-[#006B78] hover:underline bg-[#E6F4F5] py-2 px-3 rounded-xl transition"
+              >
+                🩺 Enter as Dr. Sarah Weerasinghe (SLVC-8924)
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDevBypass('dr.silva@kandypetcare.lk')}
+                className="text-xs font-bold text-stone-700 hover:underline bg-stone-100 py-2 px-3 rounded-xl transition"
+              >
+                🩺 Enter as Dr. Nuwan Silva (SLVC-7719)
+              </button>
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
