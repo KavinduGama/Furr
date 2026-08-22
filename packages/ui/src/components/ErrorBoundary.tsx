@@ -42,9 +42,9 @@ export class ErrorBoundary extends Component<Props, State> {
             {this.props.fallbackTitle || 'Something went wrong'}
           </Text>
           <Text style={styles.message}>
-            {this.state.error?.message ||
-              this.props.fallbackMessage ||
-              'An unexpected error occurred. Tap below to reload the screen.'}
+            {typeof process !== 'undefined' && process.env?.NODE_ENV === 'production'
+              ? (this.props.fallbackMessage || 'An unexpected error occurred. Please try again.')
+              : (this.state.error?.message || this.props.fallbackMessage || 'An unexpected error occurred. Tap below to reload the screen.')}
           </Text>
           <Pressable style={styles.button} onPress={this.handleReset}>
             <Text style={styles.buttonText}>Try Again</Text>

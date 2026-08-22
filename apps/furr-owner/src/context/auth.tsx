@@ -12,6 +12,7 @@ import {
   subscribeToAuthState,
   signOut as firebaseSignOut,
   getOwnerProfile,
+  IS_DEV_BYPASS,
 } from '@furr/firebase';
 import type { OwnerProfile } from '@furr/core';
 
@@ -60,11 +61,10 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 // ─────────────────────────────────────────────────────────────
 //  Dev bypass helpers
-//  When Firebase is not configured, we use a local mock user so
-//  all screens can be developed/tested without credentials.
+//  Uses the shared IS_DEV_BYPASS from @furr/firebase which is
+//  fail-closed in production (MED-A).
 // ─────────────────────────────────────────────────────────────
 
-const IS_DEV_BYPASS = !process.env.EXPO_PUBLIC_FIREBASE_API_KEY;
 const IS_LOCAL_PREVIEW = process.env.NODE_ENV === 'development';
 
 const DEV_MOCK_PROFILE: OwnerProfile = {

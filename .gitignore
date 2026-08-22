@@ -1,11 +1,51 @@
+# Dependencies
 node_modules/
+.pnp
+.pnp.*
+
+# Next.js & Web builds
+.next/
+**/.next/
+out/
+**/out/
+build/
+**/build/
+.vercel
+**/.vercel/
+
+# Expo & Mobile
 .expo/
+**/.expo/
 dist/
+**/dist/
+
+# TypeScript & Caches
+*.tsbuildinfo
+**/*.tsbuildinfo
+.turbo/
+**/.turbo/
+packages/functions/lib/
+
+# Environment files
 .env
 .env.*
 !.env.example
+
+# Secrets & Keys
 *.keystore
 *.p8
 *.mobileprovision
 credentials.json
+
+# Testing & Logs
 coverage/
+**/coverage/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# OS Files
+.DS_Store
+Thumbs.db

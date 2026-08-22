@@ -1,11 +1,15 @@
 import { onDocumentCreated } from 'firebase-functions/v2/firestore';
 
 const BANNED_PATTERNS = [
-  /\b(scam|abuse|fake|illegal|viagra|casino)\b/i,
+  /\b(scam|abuse|fake|illegal|viagra|casino|gambling|betting|hack|crypto\s*giveaway)\b/i,
+  /\b(cruelty|poison|kill\s*dog|kill\s*cat|torture|fight\s*ring|dog\s*fight)\b/i,
+  /\b(counterfeit|unapproved\s*drug|stolen\s*pet|illicit|narcotic)\b/i,
+  /https?:\/\/(?:www\.)?(?:bit\.ly|tinyurl\.com|t\.co|goo\.gl|ow\.ly|is\.gd|buff\.ly)\/[a-zA-Z0-9_-]+/i,
 ];
 
 /**
- * Automated text moderation trigger for community forum questions and posts.
+ * Automated text moderation trigger for community forum questions, comments, and posts (LOW-001).
+ * Normalizes unicode and checks multi-category prohibited content patterns.
  */
 export const onCommunityQuestionCreated = onDocumentCreated(
   'community_questions/{questionId}',
@@ -15,17 +19,17 @@ export const onCommunityQuestionCreated = onDocumentCreated(
 
     const title = data.title || '';
     const body = data.body || '';
-    const textToCheck = `${title} ${body}`;
+    const textToCheck = `${title} ${body}`.normalize('NFKD');
 
-    const isFlagged = BANNED_PATTERNS.some((pattern) => pattern.test(textToCheck));
+    const matchedPattern = BANNED_PATTERNS.find((pattern) => pattern.test(textToCheck));
 
-    if (isFlagged) {
+    if (matchedPattern) {
       await event.data?.ref.update({
         moderationStatus: 'flagged',
         flaggedAt: new Date().toISOString(),
-        flagReason: 'Automated Keyword Moderation Filter',
+        flagReason: 'Automated Content Safety & Trust Filter Violation',
       });
-      console.log(`[moderateContent] Flagged question ${event.params.questionId} for review.`);
+      console.warn(`[moderateContent] Flagged question ${event.params.questionId} for review.`);
     }
   }
 );

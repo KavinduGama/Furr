@@ -1,10 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { User } from 'firebase/auth';
 import { formatPhoneDisplay } from '@furr/core';
-import { clearRecaptchaVerifier, DevConfirmationResult, DEV_BYPASS_CODE, sendPhoneOtp, verifyOtp } from '@furr/firebase';
+import { clearRecaptchaVerifier, DevConfirmationResult, sendPhoneOtp, verifyOtp } from '@furr/firebase';
 import { Button, KeyboardScreen, OtpInput, colors, radius, space } from '@furr/ui';
 import { useAuth, useDevBypass } from '@/src/context/auth';
 
@@ -86,13 +86,16 @@ export default function OtpScreen() {
   };
 
   const displayPhone = formatPhoneDisplay(phone ?? '');
+  const attemptedCodeRef = useRef<string>('');
 
-  // Auto-verify when 6 digits are entered
+  // Auto-verify when 6 digits are entered (MED-019)
   useEffect(() => {
-    if (code.length === 6 && !loading) {
+    if (code.length < 6) {
+      attemptedCodeRef.current = '';
+    } else if (code.length === 6 && !loading && attemptedCodeRef.current !== code) {
+      attemptedCodeRef.current = code;
       handleVerify();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [code, loading]);
 
 
@@ -109,7 +112,6 @@ export default function OtpScreen() {
         <Text style={styles.copy}>
           Enter the 6-digit code sent to{'\n'}
           <Text style={styles.phoneHighlight}>{displayPhone}</Text>
-          {IS_DEV_BYPASS && `\n\n⚙ Dev mode: use code ${DEV_BYPASS_CODE}`}
         </Text>
       </View>
 

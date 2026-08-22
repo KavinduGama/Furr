@@ -130,19 +130,21 @@ export function subscribeToOwnerConsultations(
 }
 
 export function subscribeToAllActiveConsultations(
-  onUpdate: (consults: Consultation[]) => void
+  onUpdate: (consults: Consultation[]) => void,
+  vetUid?: string
 ) {
   let unsubscribe: (() => void) | undefined;
   let active = true;
 
   void (async () => {
     try {
-      const { getFirestore, collection, onSnapshot } = await import('firebase/firestore');
+      const { getFirestore, collection, query, where, onSnapshot } = await import('firebase/firestore');
       const db = getFirestore();
-      const ref = collection(db, 'telemedicine_consultations');
+      const colRef = collection(db, 'telemedicine_consultations');
+      const q = vetUid ? query(colRef, where('vetUid', '==', vetUid)) : colRef;
 
       unsubscribe = onSnapshot(
-        ref,
+        q,
         (snapshot) => {
           if (snapshot.empty) {
             onUpdate(INITIAL_CONSULTATIONS);
@@ -308,16 +310,20 @@ export async function updateConsultationStatus(
   consultationId: string,
   updates: Partial<Pick<Consultation, 'status' | 'vetUid' | 'vetName' | 'vetClinicName' | 'summary' | 'prescriptions'>>
 ): Promise<void> {
+  const payload = {
+    ...updates,
+    updatedAt: new Date().toISOString(),
+  };
   try {
     const { getFirestore, doc, updateDoc } = await import('firebase/firestore');
     const db = getFirestore();
     const ref = doc(db, 'telemedicine_consultations', consultationId);
-    await updateDoc(ref, updates);
+    await updateDoc(ref, payload);
   } catch (e) {
     console.warn('Local fallback for updateConsultationStatus:', e);
     const item = INITIAL_CONSULTATIONS.find((c) => c.id === consultationId);
     if (item) {
-      Object.assign(item, updates);
+      Object.assign(item, payload);
     }
   }
 }

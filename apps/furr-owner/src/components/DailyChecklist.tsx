@@ -1,55 +1,75 @@
-import React, { useEffect } from 'react';
-import { View, Text, StyleSheet, Pressable } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { StyleSheet, Text, View, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import Animated, { useAnimatedProps, useSharedValue, withTiming, Easing, withSpring } from 'react-native-reanimated';
+import Animated, {
+  Easing,
+  useAnimatedProps,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
 import Svg, { Circle } from 'react-native-svg';
+import { CelebrationBurst, colors, motion, radius, space, typography } from '@furr/ui';
 import { useRoutines } from '../context/routines';
-import { colors, radius, space } from '@furr/ui';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
 export function DailyChecklist() {
   const { tasks, toggleTask } = useRoutines();
-  
-  // Sort tasks: uncompleted first, then completed
+  const [burst, setBurst] = useState(0);
+  const wasComplete = useRef(false);
+
   const sortedTasks = [...tasks].sort((a, b) => {
     if (a.isCompleted === b.isCompleted) return 0;
     return a.isCompleted ? 1 : -1;
   });
 
   const total = tasks.length;
-  const completed = tasks.filter(t => t.isCompleted).length;
+  const completed = tasks.filter((t) => t.isCompleted).length;
   const progress = total === 0 ? 0 : completed / total;
+  const isComplete = total > 0 && completed === total;
 
-  // Animation for the progress ring
+  useEffect(() => {
+    if (isComplete && !wasComplete.current) {
+      wasComplete.current = true;
+      setBurst((n) => n + 1);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+    }
+    if (!isComplete) wasComplete.current = false;
+  }, [isComplete]);
+
   const progressValue = useSharedValue(progress);
   useEffect(() => {
-    progressValue.value = withTiming(progress, { duration: 600, easing: Easing.out(Easing.cubic) });
+    progressValue.value = withTiming(progress, {
+      duration: motion.durationSlow,
+      easing: Easing.out(Easing.cubic),
+    });
   }, [progress, progressValue]);
 
   const CIRCLE_RADIUS = 24;
   const CIRCLE_CIRCUMFERENCE = 2 * Math.PI * CIRCLE_RADIUS;
 
-  const animatedProps = useAnimatedProps(() => {
-    const strokeDashoffset = CIRCLE_CIRCUMFERENCE - progressValue.value * CIRCLE_CIRCUMFERENCE;
-    return {
-      strokeDashoffset,
-    };
-  });
+  const animatedProps = useAnimatedProps(() => ({
+    strokeDashoffset:
+      CIRCLE_CIRCUMFERENCE - progressValue.value * CIRCLE_CIRCUMFERENCE,
+  }));
 
   if (total === 0) return null;
 
   return (
     <View style={styles.container}>
+      <CelebrationBurst trigger={burst} />
       <View style={styles.header}>
         <View style={{ flex: 1 }}>
-          <Text style={styles.title}>Daily Checklist</Text>
-          <Text style={styles.subtitle}>{completed} of {total} completed today</Text>
+          <Text style={typography.heading}>Daily Checklist</Text>
+          <Text style={styles.subtitle}>
+            {isComplete ? 'Perfect day — all done!' : `${completed} of ${total} completed today`}
+          </Text>
         </View>
         <View style={styles.ringContainer}>
           <Svg width={60} height={60} viewBox="0 0 60 60">
-            {/* Background ring */}
             <Circle
               cx={30}
               cy={30}
@@ -58,7 +78,6 @@ export function DailyChecklist() {
               strokeWidth={5}
               fill="none"
             />
-            {/* Animated progress ring */}
             <AnimatedCircle
               cx={30}
               cy={30}
@@ -79,27 +98,62 @@ export function DailyChecklist() {
       </View>
 
       <View style={styles.taskList}>
-        {sortedTasks.map(task => (
-          <Pressable
+        {sortedTasks.map((task) => (
+          <TaskRow
             key={task.id}
-            style={[styles.taskItem, task.isCompleted && styles.taskItemCompleted]}
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              toggleTask(task.id, !task.isCompleted);
-            }}
-          >
-            <View style={[styles.checkbox, task.isCompleted && styles.checkboxChecked]}>
-              {task.isCompleted && <Ionicons name="checkmark" size={16} color="#fff" />}
-            </View>
-            <View style={styles.taskContent}>
-              <Text style={[styles.taskTitle, task.isCompleted && styles.taskTitleCompleted]}>
-                {task.title}
-              </Text>
-            </View>
-          </Pressable>
+            title={task.title}
+            isCompleted={task.isCompleted}
+            onToggle={() => toggleTask(task.id, !task.isCompleted)}
+          />
         ))}
       </View>
     </View>
+  );
+}
+
+function TaskRow({
+  title,
+  isCompleted,
+  onToggle,
+}: {
+  title: string;
+  isCompleted: boolean;
+  onToggle: () => void;
+}) {
+  const checkScale = useSharedValue(1);
+  const checkboxStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: checkScale.value }],
+    backgroundColor: withTiming(isCompleted ? colors.brand : 'transparent', {
+      duration: motion.durationFast,
+    }),
+    borderColor: withTiming(isCompleted ? colors.brand : colors.line, {
+      duration: motion.durationFast,
+    }),
+  }));
+
+  return (
+    <Pressable
+      accessibilityRole="checkbox"
+      accessibilityState={{ checked: isCompleted }}
+      accessibilityLabel={title}
+      onPress={() => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+        checkScale.value = withSpring(1.25, { damping: 10, stiffness: 300 }, () => {
+          checkScale.value = withSpring(1, motion.spring);
+        });
+        onToggle();
+      }}
+      style={[styles.taskItem, isCompleted && styles.taskItemCompleted]}
+    >
+      <Animated.View style={[styles.checkbox, checkboxStyle]}>
+        {isCompleted && <Ionicons name="checkmark" size={16} color="#fff" />}
+      </Animated.View>
+      <View style={styles.taskContent}>
+        <Text style={[styles.taskTitle, isCompleted && styles.taskTitleCompleted]}>
+          {title}
+        </Text>
+      </View>
+    </Pressable>
   );
 }
 
@@ -109,26 +163,22 @@ const styles = StyleSheet.create({
     borderRadius: radius.xl,
     padding: space.lg,
     marginHorizontal: space.lg,
+    marginTop: space.md,
+    overflow: 'hidden',
     shadowColor: colors.ink,
     shadowOpacity: 0.04,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 4 },
     elevation: 2,
-    marginTop: space.lg,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: space.lg,
   },
-  title: {
-    color: colors.ink,
-    fontSize: 18,
-    fontWeight: '900',
-  },
   subtitle: {
+    ...typography.caption,
     color: colors.muted,
-    fontSize: 13,
     marginTop: 2,
   },
   ringContainer: {
@@ -163,14 +213,9 @@ const styles = StyleSheet.create({
     height: 24,
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: colors.line,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: space.md,
-  },
-  checkboxChecked: {
-    backgroundColor: colors.brand,
-    borderColor: colors.brand,
   },
   taskContent: {
     flex: 1,
@@ -183,10 +228,5 @@ const styles = StyleSheet.create({
   taskTitleCompleted: {
     textDecorationLine: 'line-through',
     color: colors.muted,
-  },
-  taskDesc: {
-    fontSize: 13,
-    color: colors.muted,
-    marginTop: 2,
   },
 });

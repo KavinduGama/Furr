@@ -32,21 +32,30 @@ const firebaseEnabled = initFirebase(firebaseOptionsFromEnvironment({
   NEXT_PUBLIC_FIREBASE_APP_ID: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 }));
 
+const isDev = process.env.NODE_ENV === 'development';
+
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [firebaseUser, setFirebaseUser] = useState<PortalUser | null>(null);
   const [profile, setProfile] = useState<ProfessionalProfile | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    // CRIT-B: Only allow dev auto-auth in development environment (never in production)
     if (!firebaseEnabled) {
-      void getProfessionalProfile('vet_dev_001').then((nextProfile) => {
-        setFirebaseUser({ uid: 'vet_dev_001', email: 'dr.smith@example.com' });
-        setProfile(nextProfile);
+      if (isDev) {
+        void getProfessionalProfile('vet_dev_001').then((nextProfile) => {
+          setFirebaseUser({ uid: 'vet_dev_001', email: 'dr.smith@example.com' });
+          setProfile(nextProfile);
+          setIsLoading(false);
+        });
+      } else {
+        // In production, if Firebase is not configured, show error — do NOT auto-authenticate
+        setError('Firebase is not configured. Please contact your administrator.');
         setIsLoading(false);
-      });
+      }
       return;
     }
 
@@ -80,17 +89,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     firebaseUser,
     profile,
     isLoading,
-    isPreview: !firebaseEnabled,
+    isPreview: !firebaseEnabled && isDev,
     error,
     signIn: async (email, password) => {
       setError(null);
       try {
         await signInWithEmail(email, password);
-      } catch {
-        // Fallback for dev environment or offline demo
-        const mockProfile = devProfessionalProfiles.find((p) => p.email.toLowerCase() === email.toLowerCase()) || devProfessionalProfiles[0];
-        setFirebaseUser({ uid: mockProfile.uid, email: mockProfile.email });
-        setProfile(mockProfile);
+      } catch (err) {
+        // CRIT-A: Only fall back to dev profiles in development — in production, throw the error
+        if (isDev) {
+          const mockProfile = devProfessionalProfiles.find((p) => p.email.toLowerCase() === email.toLowerCase()) || devProfessionalProfiles[0];
+          setFirebaseUser({ uid: mockProfile.uid, email: mockProfile.email });
+          setProfile(mockProfile);
+        } else {
+          setError('Invalid credentials. Please check your email and password.');
+          throw err;
+        }
       }
     },
     signOut: async () => {

@@ -6,6 +6,7 @@ import {
   signInWithEmail,
   signOut as firebaseSignOut,
   subscribeToAuthState,
+  IS_DEV_BYPASS,
 } from '@furr/firebase';
 
 type VetAuthContextValue = {
@@ -27,16 +28,27 @@ export function VetAuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Check auth or default to dev profile
     const unsub = subscribeToAuthState(async (fbUser: { uid: string; email: string | null } | null) => {
       if (fbUser) {
         setUser({ uid: fbUser.uid, email: fbUser.email });
         const p = await getProfessionalProfile(fbUser.uid);
-        setProfile(p || devProfessionalProfiles[0]);
+        if (p) {
+          setProfile(p);
+        } else if (IS_DEV_BYPASS) {
+          setProfile(devProfessionalProfiles[0]);
+        } else {
+          // Non-vet authenticated user in production (HIGH-014)
+          setProfile(null);
+        }
       } else {
-        // Dev default profile
-        setUser({ uid: devProfessionalProfiles[0].uid, email: devProfessionalProfiles[0].email });
-        setProfile(devProfessionalProfiles[0]);
+        if (IS_DEV_BYPASS) {
+          // Dev bypass default profile only in development (CRIT-002)
+          setUser({ uid: devProfessionalProfiles[0].uid, email: devProfessionalProfiles[0].email });
+          setProfile(devProfessionalProfiles[0]);
+        } else {
+          setUser(null);
+          setProfile(null);
+        }
       }
       setIsLoading(false);
     });
@@ -46,11 +58,18 @@ export function VetAuthProvider({ children }: { children: React.ReactNode }) {
   const signIn = async (email: string, pass: string) => {
     try {
       await signInWithEmail(email, pass);
-    } catch {
-      // Dev fallback
-      const found = devProfessionalProfiles.find((p: ProfessionalProfile) => p.email.toLowerCase() === email.toLowerCase()) || devProfessionalProfiles[0];
-      setUser({ uid: found.uid, email: found.email });
-      setProfile(found);
+    } catch (err) {
+      if (IS_DEV_BYPASS) {
+        // Dev fallback in local dev only
+        const found = devProfessionalProfiles.find(
+          (p: ProfessionalProfile) => p.email.toLowerCase() === email.toLowerCase()
+        ) || devProfessionalProfiles[0];
+        setUser({ uid: found.uid, email: found.email });
+        setProfile(found);
+      } else {
+        // In production, throw error (CRIT-003)
+        throw err;
+      }
     }
   };
 

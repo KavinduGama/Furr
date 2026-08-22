@@ -10,7 +10,9 @@
   "peerDependencies": {
     "react": ">=19.0.0",
     "react-native": ">=0.76.0",
+    "@expo/vector-icons": "*",
     "expo-haptics": "*",
-    "react-native-reanimated": "*"
+    "react-native-reanimated": "*",
+    "react-native-safe-area-context": "*"
   }
 }

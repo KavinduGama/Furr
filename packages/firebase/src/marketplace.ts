@@ -134,15 +134,15 @@ export function subscribeToProducts(
 
   void (async () => {
     try {
-      const { getFirestore, collection, onSnapshot } = await import('firebase/firestore');
+      const { getFirestore, collection, query, where, onSnapshot } = await import('firebase/firestore');
       const db = getFirestore();
       const colRef = collection(db, 'marketplace_products');
+      const q = categoryFilter ? query(colRef, where('category', '==', categoryFilter)) : query(colRef);
 
       unsubscribe = onSnapshot(
-        colRef,
+        q,
         (snapshot) => {
           if (snapshot.empty) {
-            // Return fallback seed products if Firestore collection not yet populated
             const filtered = categoryFilter
               ? INITIAL_PRODUCTS.filter((p) => p.category === categoryFilter)
               : INITIAL_PRODUCTS;
@@ -152,9 +152,7 @@ export function subscribeToProducts(
           const prods: Product[] = [];
           snapshot.forEach((docSnap) => {
             const data = docSnap.data() as Product;
-            if (!categoryFilter || data.category === categoryFilter) {
-              prods.push({ ...data, id: docSnap.id });
-            }
+            prods.push({ ...data, id: docSnap.id });
           });
           onUpdate(prods.length > 0 ? prods : INITIAL_PRODUCTS);
         },
@@ -243,6 +241,23 @@ export async function createOrder(orderData: Omit<Order, 'id' | 'createdAt'>): P
       createdAt: new Date().toISOString(),
     };
     await setDoc(newRef, order);
+
+    // Call Cloud Function to server-validate inventory and prices if functions SDK is available (CRIT-007)
+    try {
+      const { getFunctions, httpsCallable } = await import('firebase/functions');
+      const functions = getFunctions();
+      const processOrderFn = httpsCallable<any, any>(functions, 'processMarketplaceOrder');
+      await processOrderFn({
+        orderId: order.id,
+        items: order.items.map((i) => ({ productId: i.product.id, quantity: i.quantity })),
+        totalLkr: order.total,
+        ownerUid: order.ownerUid,
+        deliveryAddress: `${order.shippingAddress.streetAddress}, ${order.shippingAddress.city}`,
+      });
+    } catch (fnErr) {
+      console.warn('Backend processMarketplaceOrder confirmation notice:', fnErr);
+    }
+
     return order;
   } catch (e) {
     console.warn('Local fallback for createOrder:', e);

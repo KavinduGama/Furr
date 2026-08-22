@@ -95,6 +95,14 @@
         { "fieldPath": "petId", "order": "ASCENDING" },
         { "fieldPath": "scheduledAt", "order": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "grants",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "grantExpiresAt", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

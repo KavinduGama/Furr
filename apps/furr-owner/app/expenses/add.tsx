@@ -53,7 +53,7 @@ export default function AddExpenseScreen() {
       <ScrollView contentContainerStyle={styles.content}>
         
         <View style={styles.amountInputWrap}>
-          <Text style={styles.currencySymbol}>$</Text>
+          <Text style={styles.currencySymbol}>Rs.</Text>
           <TextInput
             style={styles.amountInput}
             value={amount}

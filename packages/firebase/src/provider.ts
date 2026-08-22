@@ -498,9 +498,12 @@ export function subscribeToSellerOrders(
 
   void (async () => {
     try {
-      const { getFirestore, collection, query, onSnapshot } = await import('firebase/firestore');
+      const { getFirestore, collection, query, where, onSnapshot } = await import('firebase/firestore');
       const db = getFirestore();
-      const q = query(collection(db, 'marketplace_orders'));
+      const q = query(
+        collection(db, 'marketplace_orders'),
+        where('sellerId', '==', sellerId)
+      );
 
       unsubscribe = onSnapshot(
         q,

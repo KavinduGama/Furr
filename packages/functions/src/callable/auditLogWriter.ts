@@ -1,5 +1,6 @@
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import * as admin from 'firebase-admin';
+import * as crypto from 'crypto';
 
 export interface AuditLogInput {
   action: string;
@@ -9,10 +10,20 @@ export interface AuditLogInput {
 
 /**
  * Secure callable function to record tamper-proof administrator audit trail entries.
+ * Enforces admin claim verification (HIGH-008) and collision-resistant IDs (LOW-005).
  */
 export const writeAdminAuditLog = onCall<AuditLogInput>(async (request) => {
   if (!request.auth) {
     throw new HttpsError('unauthenticated', 'Authentication required.');
+  }
+
+  // Admin authorization check (HIGH-008)
+  const isAdmin = request.auth.token?.admin === true || request.auth.token?.role === 'admin';
+  if (!isAdmin) {
+    throw new HttpsError(
+      'permission-denied',
+      'Only authorized administrators can record audit log entries.'
+    );
   }
 
   const { action, category, details } = request.data;
@@ -22,9 +33,10 @@ export const writeAdminAuditLog = onCall<AuditLogInput>(async (request) => {
 
   const db = admin.firestore();
   const user = await admin.auth().getUser(request.auth.uid).catch(() => null);
+  const logUuid = crypto.randomUUID();
 
   const entry = {
-    id: `log-${Date.now()}`,
+    id: `log-${logUuid}`,
     timestamp: new Date().toISOString(),
     adminUid: request.auth.uid,
     adminName: user?.displayName || 'Administrator',
@@ -35,6 +47,8 @@ export const writeAdminAuditLog = onCall<AuditLogInput>(async (request) => {
     serverTimestamp: admin.firestore.FieldValue.serverTimestamp(),
   };
 
-  const docRef = await db.collection('admin_audit_logs').add(entry);
-  return { success: true, logId: docRef.id };
+  const docRef = db.collection('admin_audit_logs').doc(entry.id);
+  await docRef.set(entry);
+
+  return { success: true, logId: entry.id };
 });

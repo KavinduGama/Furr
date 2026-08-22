@@ -89,11 +89,27 @@ export async function verifyOtp(
   return result.user;
 }
 
-/** Sign in a professional or administrator using Firebase email/password auth. */
+/** Sign in a professional, customer or administrator using Firebase email/password auth. */
 export async function signInWithEmail(email: string, password: string): Promise<User> {
   const result = await signInWithEmailAndPassword(getAuth(getApp()), email, password);
   return result.user;
 }
+
+/** Create a new customer or administrator account using Firebase email/password auth. */
+export async function createUserWithEmail(email: string, password: string, displayName?: string): Promise<User> {
+  const { createUserWithEmailAndPassword, updateProfile } = await import('firebase/auth');
+  const result = await createUserWithEmailAndPassword(getAuth(getApp()), email, password);
+  if (displayName && result.user) {
+    try {
+      await updateProfile(result.user, { displayName });
+    } catch {
+      // ignore
+    }
+  }
+  return result.user;
+}
+
+export type { User as AuthUser };
 
 // ── Session ──────────────────────────────────────────────────
 
@@ -131,23 +147,26 @@ export function getCurrentUser(): User | null {
 // ── Dev bypass (no Firebase config) ─────────────────────────
 
 /**
- * A mock ConfirmationResult used when Firebase is not configured.
- * Accepts the code "123456" to simulate a successful OTP.
+ * A mock ConfirmationResult used when Firebase is not configured in development.
+ * Automatically disabled in production environments (MED-001).
  */
-export const DEV_BYPASS_CODE = '123456';
+const DEV_BYPASS_CODE = '123456';
 
 export class DevConfirmationResult implements ConfirmationResult {
   verificationId = 'dev-bypass';
 
   async confirm(code: string): Promise<UserCredential> {
+    if (process.env.NODE_ENV === 'production') {
+      throw Object.assign(new Error('Dev bypass is disabled in production'), { code: 'auth/operation-not-allowed' });
+    }
     if (code !== DEV_BYPASS_CODE) {
       throw Object.assign(new Error('Wrong OTP'), { code: 'auth/invalid-verification-code' });
     }
-    // Return a minimal mock UserCredential — only user.uid and user.phoneNumber are used
+    // Return a minimal mock UserCredential in local development
     const mockUser = {
       uid: 'dev-uid-local',
       phoneNumber: '+94770000000',
-      displayName: null,
+      displayName: 'Dev Pet Owner',
       email: null,
       emailVerified: false,
       isAnonymous: false,

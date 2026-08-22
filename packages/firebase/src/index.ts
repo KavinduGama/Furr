@@ -60,12 +60,13 @@ export {
   sendPhoneOtp,
   verifyOtp,
   signInWithEmail,
+  createUserWithEmail,
   signOut,
   subscribeToAuthState,
   getCurrentUser,
   clearRecaptchaVerifier,
   DevConfirmationResult,
-  DEV_BYPASS_CODE,
+  type AuthUser,
 } from './auth';
 
 export {

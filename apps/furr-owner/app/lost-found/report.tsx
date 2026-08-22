@@ -15,6 +15,19 @@ import { colors, radius, space, Button } from '@furr/ui';
 import { useLostFound } from '@/src/context/lostfound';
 import { usePets } from '@/src/context/pets';
 
+const CITY_COORDINATES: Record<string, { lat: number; lng: number }> = {
+  Colombo: { lat: 6.9271, lng: 79.8612 },
+  Kandy: { lat: 7.2906, lng: 80.6337 },
+  Galle: { lat: 6.0535, lng: 80.2210 },
+  Gampaha: { lat: 7.0840, lng: 79.9925 },
+  Negombo: { lat: 7.2008, lng: 79.8736 },
+  Kurunegala: { lat: 7.4863, lng: 80.3623 },
+  Matara: { lat: 5.9549, lng: 80.5550 },
+  Jaffna: { lat: 9.6615, lng: 80.0255 },
+  Batticaloa: { lat: 7.7310, lng: 81.6747 },
+  Anuradhapura: { lat: 8.3114, lng: 80.4037 },
+};
+
 export default function ReportPetScreen() {
   const { type } = useLocalSearchParams<{ type?: string }>();
   const isLostReport = type !== 'found';
@@ -42,6 +55,8 @@ export default function ReportPetScreen() {
     setIsSubmitting(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
 
+    const coords = CITY_COORDINATES[city] || CITY_COORDINATES.Colombo;
+
     try {
       if (isLostReport) {
         await broadcastLostAlert({
@@ -54,8 +69,8 @@ export default function ReportPetScreen() {
           lastSeenAddress: location,
           lastSeenCity: city,
           lastSeenTime: new Date().toISOString(),
-          latitude: 6.9271,
-          longitude: 79.8612,
+          latitude: coords.lat,
+          longitude: coords.lng,
           rewardAmount: reward,
           ownerPhone: phone,
           description: notes || 'Missing companion. Please help locate!',

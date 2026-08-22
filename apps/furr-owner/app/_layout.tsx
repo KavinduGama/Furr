@@ -17,7 +17,7 @@ import { CommunityProvider } from '@/src/context/community';
 import { CareProvider } from '@/src/context/care';
 import { LostFoundProvider } from '@/src/context/lostfound';
 import { FamilyProvider } from '@/src/context/family';
-import { ErrorBoundary } from '@furr/ui';
+import { ErrorBoundary, ToastProvider } from '@furr/ui';
 import { AuthNavigationGuard } from '@/src/components/AuthNavigationGuard';
 import {
   firebaseOptionsFromEnvironment,
@@ -50,10 +50,12 @@ export default function RootLayout() {
                               <CareProvider>
                                 <LostFoundProvider>
                                   <FamilyProvider>
-                                    <AuthNavigationGuard>
-                                      <StatusBar style="dark" />
-                                      <Stack screenOptions={{ headerShown: false, animation: 'fade' }} />
-                                    </AuthNavigationGuard>
+                                    <ToastProvider>
+                                      <AuthNavigationGuard>
+                                        <StatusBar style="dark" />
+                                        <Stack screenOptions={{ headerShown: false, animation: 'fade' }} />
+                                      </AuthNavigationGuard>
+                                    </ToastProvider>
                                   </FamilyProvider>
                                 </LostFoundProvider>
                               </CareProvider>
