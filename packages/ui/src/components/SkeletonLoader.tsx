@@ -1,12 +1,20 @@
-import React, { useEffect, useRef } from 'react';
-import { View, Animated, StyleSheet, type ViewStyle } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { StyleSheet, View, type ViewStyle, type StyleProp } from 'react-native';
+import Animated, {
+  Easing,
+  cancelAnimation,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withTiming,
+} from 'react-native-reanimated';
 import { colors, radius } from '../tokens';
 
 export interface SkeletonLoaderProps {
   width?: number | string;
   height?: number;
   borderRadius?: number;
-  style?: ViewStyle;
+  style?: StyleProp<ViewStyle>;
 }
 
 export function SkeletonLoader({
@@ -15,47 +23,45 @@ export function SkeletonLoader({
   borderRadius = radius.sm,
   style,
 }: SkeletonLoaderProps) {
-  const opacity = useRef(new Animated.Value(0.3)).current;
+  const [containerWidth, setContainerWidth] = useState(0);
+  const sweep = useSharedValue(0);
 
   useEffect(() => {
-    const animation = Animated.loop(
-      Animated.sequence([
-        Animated.timing(opacity, {
-          toValue: 0.8,
-          duration: 800,
-          useNativeDriver: true,
-        }),
-        Animated.timing(opacity, {
-          toValue: 0.3,
-          duration: 800,
-          useNativeDriver: true,
-        }),
-      ])
+    if (containerWidth <= 0) return;
+    sweep.value = -containerWidth * 0.5;
+    sweep.value = withRepeat(
+      withTiming(containerWidth * 1.2, { duration: 1100, easing: Easing.inOut(Easing.quad) }),
+      -1,
+      false,
     );
-    animation.start();
+    return () => cancelAnimation(sweep);
+  }, [containerWidth, sweep]);
 
-    return () => animation.stop();
-  }, [opacity]);
+  const sweepStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: sweep.value }],
+  }));
 
   return (
-    <Animated.View
+    <View
+      onLayout={(e) => setContainerWidth(e.nativeEvent.layout.width)}
       style={[
         styles.skeleton,
         {
-          width: width as any,
+          width: width as number | `${number}%`,
           height,
           borderRadius,
-          opacity,
         },
         style,
       ]}
-    />
+    >
+      <Animated.View style={[styles.sweep, sweepStyle]} />
+    </View>
   );
 }
 
-export function SkeletonCard({ height = 120, style }: { height?: number; style?: ViewStyle }) {
+export function SkeletonCard({ height = 120, style }: { height?: number; style?: StyleProp<ViewStyle> }) {
   return (
-    <View style={[styles.card, style]}>
+    <View style={[styles.card, height ? { minHeight: height } : undefined, style]}>
       <SkeletonLoader width="60%" height={16} style={{ marginBottom: 10 }} />
       <SkeletonLoader width="90%" height={12} style={{ marginBottom: 6 }} />
       <SkeletonLoader width="40%" height={12} />
@@ -66,6 +72,15 @@ export function SkeletonCard({ height = 120, style }: { height?: number; style?:
 const styles = StyleSheet.create({
   skeleton: {
     backgroundColor: colors.pearl,
+    overflow: 'hidden',
+  },
+  sweep: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: 0,
+    width: '50%',
+    backgroundColor: 'rgba(255,255,255,0.55)',
   },
   card: {
     backgroundColor: colors.surface,
