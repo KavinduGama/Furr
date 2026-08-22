@@ -1,252 +1,451 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { useState } from 'react';
-import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { colors, radius, space } from '@furr/ui';
-import { Screen } from '@/src/components/screen';
+import React, { useMemo } from 'react';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as Haptics from 'expo-haptics';
+import { Avatar, Card, Chip, PressableCard, colors, moments, motion, radius, space, typography } from '@furr/ui';
+import type { Pet } from '@furr/core';
 import { DailyChecklist } from '@/src/components/DailyChecklist';
 import { useAuth } from '@/src/context/auth';
 import { usePets } from '@/src/context/pets';
+import { useHealth } from '@/src/context/health';
+import { useRoutines } from '@/src/context/routines';
 
-const maxHero = require('../../assets/furr/max-hero-editorial.png');
-const softgel = require('../../assets/furr/omega-softgel-editorial.png');
+function formatTaskTime(time?: string): string {
+  if (!time) return 'Anytime';
+  const [hRaw, mRaw] = time.split(':');
+  const h = Number(hRaw);
+  if (Number.isNaN(h)) return time;
+  const suffix = h >= 12 ? 'PM' : 'AM';
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return `${h12}:${(mRaw ?? '00').padStart(2, '0')} ${suffix}`;
+}
+
+function formatAge(birthDate?: string): string | null {
+  if (!birthDate) return null;
+  const born = new Date(birthDate);
+  if (Number.isNaN(born.getTime())) return null;
+  const now = new Date();
+  let months =
+    (now.getFullYear() - born.getFullYear()) * 12 + (now.getMonth() - born.getMonth());
+  if (now.getDate() < born.getDate()) months -= 1;
+  if (months < 0) return 'New';
+  const years = Math.floor(months / 12);
+  const rest = months % 12;
+  if (years === 0) return `${rest} mo old`;
+  return rest ? `${years} yr ${rest} mo` : `${years} yr old`;
+}
+
+const SPECIES_LABEL: Record<Pet['species'], string> = { dog: 'Dog', cat: 'Cat' };
 
 export default function TodayScreen() {
+  const insets = useSafeAreaInsets();
   const { profile } = useAuth();
-  const { selectedPet, pets } = usePets();
-  const [doseGiven, setDoseGiven] = useState(false);
-  const petName = selectedPet?.name ?? 'your pet';
-  const hasPets = pets.length > 0;
-  
+  const { pets, selectedPet } = usePets();
+  const { tasks } = useRoutines();
+  const { vaccinations, medications, weights } = useHealth();
+
   const firstName = profile?.displayName?.split(' ')[0] ?? 'there';
+  const hasPets = pets.length > 0;
+
+  const upNext = useMemo(() => {
+    const pending = tasks.filter((t) => !t.isCompleted);
+    if (pending.length === 0) return null;
+    return [...pending].sort((a, b) => (a.time ?? '99').localeCompare(b.time ?? '99'))[0];
+  }, [tasks]);
+
+  const lastWeight = useMemo(() => {
+    if (weights.length === 0) return null;
+    return [...weights].sort((a, b) => (b.measuredOn ?? '').localeCompare(a.measuredOn ?? ''))[0];
+  }, [weights]);
 
   return (
-    <Screen>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        
+    <View style={[styles.screen, { paddingTop: insets.top + space.sm }]}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Header */}
         <View style={styles.topline}>
-          <View>
-            <Text style={styles.greeting}>Hi, {firstName} 👋</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={typography.display}>Hi, {firstName}</Text>
             <Text style={styles.subhead}>Give your pets the best care</Text>
           </View>
-          <Pressable
-            accessibilityRole="button"
+          <PressableCard
+            variant="flat"
+            accessibilityLabel="Notifications"
             onPress={() => router.push('/notifications' as never)}
-            style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}
+            style={styles.iconButton}
           >
             <Ionicons name="notifications-outline" color={colors.ink} size={22} />
-          </Pressable>
+          </PressableCard>
         </View>
 
-
-        {/* Pet Avatars (Horizontal List style) */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.petsScroll} contentContainerStyle={styles.petsContent}>
+        {/* Pet strip */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.petsContent}
+        >
           {pets.map((pet) => (
-            <Pressable key={pet.id} style={styles.petAvatarWrap} onPress={() => router.push('/pet-detail' as never)}>
-              <View style={[styles.petAvatar, selectedPet?.id === pet.id && styles.petAvatarSelected]}>
-                 <Text style={styles.petAvatarEmoji}>{pet.species === 'cat' ? '🐈' : '🐕'}</Text>
-              </View>
-            </Pressable>
+            <PressableCard
+              key={pet.id}
+              variant="outline"
+              accessibilityLabel={`Open ${pet.name}`}
+              onPress={() => router.push('/pet-detail' as never)}
+              style={styles.petAvatarWrap}
+            >
+              <Avatar
+                uri={pet.photoPath}
+                emoji={pet.species === 'cat' ? '🐈' : '🐕'}
+                label={pet.avatarLabel}
+                size={58}
+                selected={selectedPet?.id === pet.id}
+              />
+              <Text style={styles.petAvatarName} numberOfLines={1}>
+                {pet.name}
+              </Text>
+            </PressableCard>
           ))}
-          <Pressable style={styles.petAvatarWrap} onPress={() => router.push('/pet/add' as never)}>
-             <View style={styles.petAvatarAdd}>
-                <Ionicons name="add" size={24} color={colors.brand} />
-             </View>
-          </Pressable>
+          <PressableCard
+            variant="outline"
+            accessibilityLabel="Add a pet"
+            onPress={() => router.push('/pet/add' as never)}
+            style={styles.petAvatarWrap}
+          >
+            <View style={styles.petAvatarAdd}>
+              <Ionicons name="add" size={24} color={colors.brand} />
+            </View>
+            <Text style={styles.petAvatarName}>Add</Text>
+          </PressableCard>
         </ScrollView>
 
-        {/* Quick Actions Grid */}
+        {/* Quick actions */}
         <View style={styles.quickActionsGrid}>
-          <Pressable
-            onPress={() => router.push('/care/feeding' as never)}
-            style={styles.quickActionCard}
-          >
-            <View style={[styles.quickActionIcon, { backgroundColor: '#FFF7ED' }]}>
-              <Text style={{ fontSize: 20 }}>🥩</Text>
-            </View>
-            <Text style={styles.quickActionLabel}>Log Meal</Text>
-          </Pressable>
-
-          <Pressable
-            onPress={() => router.push('/care/walk' as never)}
-            style={styles.quickActionCard}
-          >
-            <View style={[styles.quickActionIcon, { backgroundColor: '#EFF6FF' }]}>
-              <Text style={{ fontSize: 20 }}>🦮</Text>
-            </View>
-            <Text style={styles.quickActionLabel}>Track Walk</Text>
-          </Pressable>
-
-          <Pressable
-            onPress={() => router.push('/telemedicine' as never)}
-            style={styles.quickActionCard}
-          >
-            <View style={[styles.quickActionIcon, { backgroundColor: '#ECFDF5' }]}>
-              <Text style={{ fontSize: 20 }}>🩺</Text>
-            </View>
-            <Text style={styles.quickActionLabel}>Ask a Vet</Text>
-          </Pressable>
-
-          <Pressable
-            onPress={() => router.push('/community' as never)}
-            style={styles.quickActionCard}
-          >
-            <View style={[styles.quickActionIcon, { backgroundColor: colors.softBrand }]}>
-              <Text style={{ fontSize: 20 }}>💬</Text>
-            </View>
-            <Text style={styles.quickActionLabel}>Community</Text>
-          </Pressable>
+          <QuickAction
+            icon="restaurant"
+            label="Log Meal"
+            moment={moments.meal}
+            route="/care/feeding"
+          />
+          <QuickAction
+            icon="paw"
+            label="Track Walk"
+            moment={moments.walk}
+            route="/care/walk"
+          />
+          <QuickAction
+            icon="medical"
+            label="Ask a Vet"
+            moment={moments.vet}
+            route="/telemedicine"
+          />
+          <QuickAction
+            icon="chatbubbles"
+            label="Community"
+            moment={moments.social}
+            route="/community"
+          />
         </View>
 
-        {/* Widgets Row */}
+        {/* Widgets */}
         {hasPets && (
           <View style={styles.widgetsRow}>
-            {/* Next Reminder */}
-            <View style={[styles.widget, styles.widgetHighlight]}>
-              <Text style={styles.widgetTitle}>Next Reminder</Text>
-              <View style={styles.reminderRow}>
-                <View style={styles.reminderIconWrap}>
-                  <Ionicons name="medical" size={16} color={colors.accent} />
-                </View>
-                <View style={{flex: 1}}>
-                  <Text style={styles.reminderText}>Vaccination</Text>
-                  <Text style={styles.reminderSub}>Mar 16</Text>
-                </View>
-                <Text style={styles.reminderTime}>In 5 days</Text>
-              </View>
-            </View>
+            <WidgetCard
+              tint={moments.alert.soft}
+              icon={'alarm' as const}
+              iconColor={moments.alert.icon}
+              title="Up next"
+              accessibilityLabel="Up next reminder"
+              onPress={() => router.push('/reminders/reminders' as never)}
+            >
+              {upNext ? (
+                <>
+                  <Text style={styles.widgetValue} numberOfLines={1}>
+                    {upNext.title}
+                  </Text>
+                  <Text style={styles.widgetMeta}>{formatTaskTime(upNext.time)}</Text>
+                </>
+              ) : (
+                <>
+                  <Text style={styles.widgetValue} numberOfLines={1}>
+                    All clear
+                  </Text>
+                  <Text style={styles.widgetMeta}>No tasks left today</Text>
+                </>
+              )}
+            </WidgetCard>
 
-            {/* Health Score */}
-            <View style={styles.widget}>
-              <Text style={styles.widgetTitle}>Health Score</Text>
-              <View style={styles.scoreRow}>
-                <Text style={styles.scoreValue}>92<Text style={styles.scoreMax}>/100</Text></Text>
-                <View style={styles.scoreBadge}>
-                  <Text style={styles.scoreBadgeText}>Excellent</Text>
-                </View>
-              </View>
-            </View>
+            <WidgetCard
+              tint={colors.softBrand}
+              icon={'folder-open' as const}
+              iconColor={colors.brand}
+              title="Records"
+              accessibilityLabel="Health records summary"
+              onPress={() => router.push('/care' as never)}
+            >
+              <Text style={styles.widgetValue}>
+                {vaccinations.length + medications.length + weights.length}
+                <Text style={styles.widgetMax}> items</Text>
+              </Text>
+              <Text style={styles.widgetMeta} numberOfLines={1}>
+                {lastWeight
+                  ? `Last weigh-in ${lastWeight.value} ${lastWeight.unit}`
+                  : 'Start their history'}
+              </Text>
+            </WidgetCard>
           </View>
         )}
 
-        {/* Daily Checklist */}
+        {/* Daily checklist */}
         {hasPets && <DailyChecklist />}
 
-        {/* My Pets List (Card) */}
+        {/* Pets */}
         {!hasPets ? (
-          <Pressable accessibilityRole="button" onPress={() => router.push('/pet/add' as never)} style={({ pressed }) => [styles.firstPet, pressed && styles.pressed]}>
-            <View style={styles.firstPetIcon}><Ionicons name="paw" size={25} color={colors.brand} /></View>
-            <View style={{ flex: 1 }}><Text style={styles.firstPetTitle}>Add your first pet</Text><Text style={styles.firstPetCopy}>Start tracking health records and more.</Text></View>
-            <Ionicons name="arrow-forward" size={20} color={colors.brand} />
-          </Pressable>
-        ) : (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>My Pets</Text>
+          <PressableCard
+            accessibilityLabel="Add your first pet"
+            onPress={() => router.push('/pet/add' as never)}
+            style={styles.firstPet}
+          >
+            <View style={styles.firstPetIcon}>
+              <Ionicons name="paw" size={25} color={colors.brand} />
             </View>
-            <Pressable onPress={() => router.push('/pet-detail' as never)} style={styles.petCard}>
-              <View style={styles.petCardAvatar}>
-                <Text style={styles.petAvatarEmoji}>{selectedPet?.species === 'cat' ? '🐈' : '🐕'}</Text>
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.petCardName}>{petName}</Text>
-                <Text style={styles.petCardMeta}>Golden Retriever</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color={colors.muted} />
-            </Pressable>
-          </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.firstPetTitle}>Add your first pet</Text>
+              <Text style={styles.firstPetCopy}>
+                Start tracking health records and more.
+              </Text>
+            </View>
+            <Ionicons name="arrow-forward" size={20} color={colors.brand} />
+          </PressableCard>
+        ) : (
+          <ScrollView
+            horizontal
+            pagingEnabled={false}
+            snapToInterval={276}
+            decelerationRate="fast"
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.heroCarousel}
+          >
+            {pets.map((pet) => (
+              <PetHeroCard
+                key={pet.id}
+                pet={pet}
+                weightLabel={
+                  selectedPet?.id === pet.id && lastWeight
+                    ? `${lastWeight.value} ${lastWeight.unit}`
+                    : undefined
+                }
+              />
+            ))}
+          </ScrollView>
         )}
 
-        {/* Adoption Hub Banner */}
-        <Pressable
+        {/* Adoption banner */}
+        <PressableCard
+          accessibilityLabel="Adopt a rescue pet"
           onPress={() => router.push('/adoption' as never)}
-          style={({ pressed }) => [styles.adoptionBanner, pressed && styles.pressed]}
+          style={styles.adoptionBanner}
         >
-          <View style={styles.adoptionIconCircle}>
-            <Text style={{ fontSize: 24 }}>🐾</Text>
+          <View style={[styles.adoptionIconCircle, { backgroundColor: '#FFFFFF' }]}>
+            <Ionicons name="heart" size={22} color={moments.adopt.icon} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.adoptionBannerTitle}>Adopt a Rescue Pet ❤️</Text>
+            <Text style={[styles.adoptionBannerTitle, { color: moments.adopt.icon }]}>
+              Adopt a Rescue Pet
+            </Text>
             <Text style={styles.adoptionBannerSubtitle}>
               Give a loving forever home to dogs & cats from certified shelters.
             </Text>
           </View>
-          <Ionicons name="arrow-forward" size={18} color={colors.brand} />
-        </Pressable>
-
-        {/* Recent Activity */}
-        {hasPets && (
-          <View style={styles.section}>
-             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Recent Activity</Text>
-            </View>
-
-            
-            <View style={styles.timeline}>
-              <View style={styles.timelineItem}>
-                <View style={styles.timelineIcon}>
-                  <Ionicons name="shield-checkmark" size={14} color={colors.brand} />
-                </View>
-                <View style={styles.timelineContent}>
-                  <Text style={styles.timelineText}>Vaccination record added</Text>
-                  <Text style={styles.timelineDate}>Mar 10, 2026</Text>
-                </View>
-              </View>
-
-              <View style={styles.timelineLine} />
-
-              <View style={styles.timelineItem}>
-                <View style={styles.timelineIconSecondary}>
-                  <Ionicons name="time" size={14} color={colors.accent} />
-                </View>
-                <View style={styles.timelineContent}>
-                  <Text style={styles.timelineText}>Next reminder: Deworming</Text>
-                  <Text style={styles.timelineDate}>Mar 20, 2026</Text>
-                </View>
-              </View>
-            </View>
-          </View>
-        )}
-        
+          <Ionicons name="arrow-forward" size={18} color={moments.adopt.icon} />
+        </PressableCard>
       </ScrollView>
-    </Screen>
+    </View>
+  );
+}
+
+function QuickAction({
+  icon,
+  label,
+  moment,
+  route,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  moment: { icon: string; soft: string };
+  route: string;
+}) {
+  return (
+    <PressableCard
+      variant="flat"
+      accessibilityLabel={label}
+      onPress={() => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+        router.push(route as never);
+      }}
+      style={styles.quickActionCard}
+    >
+      <View style={[styles.quickActionIcon, { backgroundColor: moment.soft }]}>
+        <Ionicons name={icon} size={20} color={moment.icon} />
+      </View>
+      <Text style={styles.quickActionLabel}>{label}</Text>
+    </PressableCard>
+  );
+}
+
+function WidgetCard({
+  tint,
+  icon,
+  iconColor,
+  title,
+  children,
+  onPress,
+  accessibilityLabel,
+}: {
+  tint: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  iconColor: string;
+  title: string;
+  children: React.ReactNode;
+  onPress: () => void;
+  accessibilityLabel: string;
+}) {
+  return (
+    <PressableCard
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      onPress={onPress}
+      style={[styles.widget, { backgroundColor: tint }]}
+    >
+      <View style={styles.widgetHeader}>
+        <View style={[styles.widgetIcon, { backgroundColor: 'rgba(255,255,255,0.75)' }]}>
+          <Ionicons name={icon} size={15} color={iconColor} />
+        </View>
+        <Text style={styles.widgetTitle}>{title}</Text>
+        <Ionicons name="chevron-forward" size={16} color={colors.muted} />
+      </View>
+      {children}
+    </PressableCard>
+  );
+}
+
+function PetHeroCard({
+  pet,
+  weightLabel,
+}: {
+  pet: Pet;
+  weightLabel?: string;
+}) {
+  const age = formatAge(pet.birthDate);
+  return (
+    <PressableCard
+      accessibilityLabel={`Open ${pet.name}'s profile`}
+      onPress={() => router.push('/pet-detail' as never)}
+      style={styles.heroCard}
+    >
+      <View style={styles.heroTop}>
+        <Avatar
+          uri={pet.photoPath}
+          emoji={pet.species === 'cat' ? '🐈' : '🐕'}
+          label={pet.avatarLabel}
+          size={52}
+          ring
+        />
+        <View style={{ flex: 1, marginLeft: space.md }}>
+          <Text style={styles.heroName} numberOfLines={1}>
+            {pet.name}
+          </Text>
+          <Text style={styles.heroBreed} numberOfLines={1}>
+            {pet.breed || SPECIES_LABEL[pet.species]}
+          </Text>
+        </View>
+        <Ionicons name="chevron-forward" size={20} color={colors.muted} />
+      </View>
+      <View style={styles.heroChips}>
+        <Chip label={SPECIES_LABEL[pet.species]} tint={moments.health.soft} color={moments.health.icon} />
+        {age ? <Chip label={age} tint={moments.social.soft} color={colors.brandDark} /> : null}
+        {weightLabel ? <Chip label={weightLabel} tint={moments.meal.soft} color={moments.meal.icon} /> : null}
+      </View>
+    </PressableCard>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { backgroundColor: colors.canvas },
-  content: { paddingBottom: space.xxl },
-  topline: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: space.lg, paddingTop: space.md },
-  greeting: { color: colors.ink, fontSize: 24, fontWeight: '800', letterSpacing: -0.5 },
-  subhead: { color: colors.muted, fontSize: 14, marginTop: 2 },
-  iconButton: { height: 44, width: 44, alignItems: 'center', justifyContent: 'center', borderRadius: radius.pill, backgroundColor: colors.surface, shadowColor: colors.ink, shadowOpacity: 0.05, shadowRadius: 10, shadowOffset: {width: 0, height: 4}, elevation: 2 },
-  pressed: { opacity: 0.8 },
-  
-  petsScroll: { marginTop: space.lg, flexGrow: 0 },
-  petsContent: { paddingHorizontal: space.lg, gap: space.sm },
-  petAvatarWrap: { alignItems: 'center', justifyContent: 'center' },
-  petAvatar: { width: 64, height: 64, borderRadius: 32, backgroundColor: colors.pearl, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: 'transparent' },
-  petAvatarSelected: { borderColor: colors.brand },
-  petAvatarEmoji: { fontSize: 32 },
-  petAvatarAdd: { width: 64, height: 64, borderRadius: 32, backgroundColor: colors.softBrand, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: colors.brand, borderStyle: 'dashed' },
+  screen: {
+    flex: 1,
+    backgroundColor: colors.canvas,
+  },
+  content: {
+    paddingBottom: space.xxl,
+  },
+
+  topline: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: space.lg,
+    paddingTop: space.md,
+  },
+  subhead: {
+    ...typography.body,
+    color: colors.muted,
+    marginTop: 2,
+  },
+  iconButton: {
+    width: 44,
+    height: 44,
+    borderRadius: radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  petsContent: {
+    paddingHorizontal: space.lg,
+    gap: space.sm,
+    marginTop: space.lg,
+  },
+  petAvatarWrap: {
+    borderRadius: radius.lg,
+    borderWidth: 0,
+    alignItems: 'center',
+    paddingTop: space.xxs,
+    paddingBottom: space.xs,
+    width: 86,
+  },
+  petAvatarName: {
+    marginTop: 4,
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.ink,
+    maxWidth: 78,
+  },
+  petAvatarAdd: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    backgroundColor: colors.softBrand,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: colors.brand,
+    borderStyle: 'dashed',
+  },
+
   quickActionsGrid: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingHorizontal: space.lg,
-    marginTop: space.lg,
+    marginTop: space.md,
     gap: space.xs,
   },
   quickActionCard: {
     flex: 1,
-    backgroundColor: colors.surface,
     borderRadius: radius.xl,
     paddingVertical: space.md,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    borderWidth: 1,
-    borderColor: colors.line,
   },
   quickActionIcon: {
     width: 44,
@@ -256,81 +455,137 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   quickActionLabel: {
-    fontSize: 11,
-    fontWeight: '800',
+    ...typography.micro,
     color: colors.ink,
   },
 
-  widgetsRow: { flexDirection: 'column', gap: space.md, paddingHorizontal: space.lg, marginTop: space.lg },
-  widget: { backgroundColor: colors.surface, borderRadius: radius.xl, padding: space.lg, shadowColor: colors.ink, shadowOpacity: 0.04, shadowRadius: 12, shadowOffset: {width: 0, height: 4}, elevation: 2 },
-  widgetHighlight: { backgroundColor: '#FFFDF5', borderColor: '#FEF3C7', borderWidth: 1 },
-  widgetTitle: { color: colors.ink, fontSize: 16, fontWeight: '800', marginBottom: space.sm },
-  
-  reminderRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
-  reminderIconWrap: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#FEF3C7', alignItems: 'center', justifyContent: 'center' },
-  reminderText: { color: colors.ink, fontSize: 15, fontWeight: '700' },
-  reminderSub: { color: colors.muted, fontSize: 13 },
-  reminderTime: { color: colors.accent, fontSize: 14, fontWeight: '700' },
+  widgetsRow: {
+    flexDirection: 'row',
+    gap: space.md,
+    paddingHorizontal: space.lg,
+    marginTop: space.md,
+  },
+  widget: {
+    flex: 1,
+    padding: space.md,
+    borderRadius: radius.lg,
+  },
+  widgetHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: space.sm,
+  },
+  widgetIcon: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  widgetTitle: {
+    flex: 1,
+    ...typography.label,
+    color: colors.ink,
+  },
+  widgetValue: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: colors.ink,
+    letterSpacing: -0.3,
+  },
+  widgetMeta: {
+    ...typography.caption,
+    color: colors.muted,
+    marginTop: 2,
+  },
+  widgetMax: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.muted,
+  },
 
-  scoreRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: space.xs },
-  scoreValue: { color: colors.ink, fontSize: 32, fontWeight: '900', letterSpacing: -1 },
-  scoreMax: { color: colors.muted, fontSize: 16, fontWeight: '700' },
-  scoreBadge: { backgroundColor: colors.calm, paddingHorizontal: 10, paddingVertical: 4, borderRadius: radius.sm },
-  scoreBadgeText: { color: colors.success, fontSize: 12, fontWeight: '800' },
+  firstPet: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    marginHorizontal: space.lg,
+    marginTop: space.lg,
+    padding: space.md,
+  },
+  firstPetIcon: {
+    height: 52,
+    width: 52,
+    borderRadius: radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.softBrand,
+  },
+  firstPetTitle: {
+    ...typography.subheading,
+    color: colors.ink,
+  },
+  firstPetCopy: {
+    fontSize: 13,
+    lineHeight: 18,
+    color: colors.muted,
+    marginTop: 3,
+  },
 
-  section: { marginTop: space.xl, paddingHorizontal: space.lg },
-  sectionHeader: { marginBottom: space.sm },
-  sectionTitle: { color: colors.ink, fontSize: 18, fontWeight: '800' },
-  
-  petCard: { backgroundColor: colors.surface, borderRadius: radius.lg, padding: space.md, flexDirection: 'row', alignItems: 'center', gap: space.md, shadowColor: colors.ink, shadowOpacity: 0.04, shadowRadius: 12, shadowOffset: {width: 0, height: 4}, elevation: 2 },
-  petCardAvatar: { width: 48, height: 48, borderRadius: 24, backgroundColor: colors.pearl, alignItems: 'center', justifyContent: 'center' },
-  petCardName: { color: colors.ink, fontSize: 16, fontWeight: '800' },
-  petCardMeta: { color: colors.muted, fontSize: 14, marginTop: 2 },
-
-  firstPet: { padding: 18, gap: 14, flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface, borderRadius: radius.lg, marginTop: space.lg, marginHorizontal: space.lg, shadowColor: colors.ink, shadowOpacity: 0.04, shadowRadius: 12, shadowOffset: {width: 0, height: 4}, elevation: 2 }, 
-  firstPetIcon: { height: 52, width: 52, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.softBrand }, 
-  firstPetTitle: { color: colors.ink, fontSize: 16, fontWeight: '800' }, 
-  firstPetCopy: { color: colors.muted, fontSize: 13, lineHeight: 18, marginTop: 3 },
-
-  timeline: { paddingLeft: space.xs, marginTop: space.sm },
-  timelineItem: { flexDirection: 'row', gap: space.md, alignItems: 'flex-start' },
-  timelineIcon: { width: 32, height: 32, borderRadius: 16, backgroundColor: colors.softBrand, alignItems: 'center', justifyContent: 'center', zIndex: 2 },
-  timelineIconSecondary: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#FFF7ED', alignItems: 'center', justifyContent: 'center', zIndex: 2 },
-  timelineContent: { flex: 1, paddingTop: 4, paddingBottom: space.md },
-  timelineText: { color: colors.ink, fontSize: 15, fontWeight: '700' },
-  timelineDate: { color: colors.muted, fontSize: 13, marginTop: 2 },
-  timelineLine: { position: 'absolute', left: 23, top: 32, bottom: 0, width: 2, backgroundColor: colors.line, zIndex: 1, height: 40 },
+  heroCarousel: {
+    paddingHorizontal: space.lg,
+    gap: space.md,
+    marginTop: space.xs,
+  },
+  heroCard: {
+    width: 264,
+    padding: space.md,
+    borderRadius: radius.xl,
+  },
+  heroTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  heroName: {
+    ...typography.heading,
+    color: colors.ink,
+  },
+  heroBreed: {
+    ...typography.caption,
+    color: colors.muted,
+    marginTop: 2,
+  },
+  heroChips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: space.xs,
+    marginTop: space.md,
+  },
 
   adoptionBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F3E8FF',
+    backgroundColor: moments.adopt.soft,
     marginHorizontal: space.lg,
-    marginTop: space.lg,
+    marginTop: space.md,
     padding: space.md,
     borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: '#E9D5FF',
     gap: space.md,
   },
   adoptionIconCircle: {
-    width: 48,
-    height: 48,
+    width: 44,
+    height: 44,
     borderRadius: radius.md,
-    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
   },
   adoptionBannerTitle: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: '#6B21A8',
+    ...typography.subheading,
   },
   adoptionBannerSubtitle: {
     fontSize: 12,
-    color: '#7E22CE',
     lineHeight: 16,
+    color: colors.muted,
     marginTop: 2,
   },
 });
-
